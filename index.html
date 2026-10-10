@@ -176,7 +176,9 @@
         const timeframes = ['1d', '4h', '1h', '15m', '5m', '1m'];
         let tfIndex = 0;
 
-        // Permanent Memory Object
+        // Updated Storage Key to prevent old cache interference
+        const STORAGE_KEY = 'vidya_institutional_fast_scalp_v4';
+
         let terminalMemory = {
             selectedAsset: 'SOLUSDT',
             activeTrade: null,
@@ -193,11 +195,11 @@
         };
 
         function saveMemory() {
-            localStorage.setItem('vidya_institutional_mega_state', JSON.stringify(terminalMemory));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(terminalMemory));
         }
 
         function loadMemory() {
-            let saved = localStorage.getItem('vidya_institutional_mega_state');
+            let saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 try {
                     terminalMemory = JSON.parse(saved);
@@ -304,7 +306,7 @@
             tfIndex = (tfIndex + 1) % timeframes.length;
         }
 
-        // Optimized for Fast 5-10 min TP with 1:8 to 1:12 R:R
+        // Fast 5-10 min TP with 1:8 to 1:12 R:R calculation
         async function generateMultiTFConfluenceTrade() {
             if(terminalMemory.activeTrade) return;
 
