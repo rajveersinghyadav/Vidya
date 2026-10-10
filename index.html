@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidya - Institutional Multi-Timeframe Trader Terminal</title>
+    <title>Vidya - Institutional Multi-TF Trader Terminal</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -54,7 +54,7 @@
             outline: none;
             cursor: pointer;
         }
-        select { flex: 1; min-width: 120px; }
+        select { flex: 1; min-width: 110px; }
         .btn-green { background-color: #0ecb81; color: #000; font-weight: bold; border: none; flex: 1; }
         .btn-red { background-color: #f6465d; color: #fff; font-weight: bold; border: none; flex: 1; }
         .btn-blue { background-color: #2b6cb0; color: #fff; font-weight: bold; border: none; flex: 1; }
@@ -100,46 +100,46 @@
 </head>
 <body>
 
-    <h1>Vidya - Institutional Multi-TF Trader Terminal</h1>
-    <div class="subtitle">Multi-TF Backtesting (1D to 1m) + EMA & Volume Profile Confluence + Brokerage Buffer</div>
+    <h1>Vidya - Institutional Multi-TF Terminal</h1>
+    <div class="subtitle">Multi-TF Backtesting + Brokerage Buffer (150+ Pips) + EMA & Volume Profile Confluence</div>
 
     <!-- Controls -->
     <div class="controls">
         <select id="assetSelect" onchange="onAssetChange()">
-            <option value="BTCUSDT">Bitcoin (BTC/USDT)</option>
-            <option value="ETHUSDT">Ethereum (ETH/USDT)</option>
-            <option value="SOLUSDT">Solana (SOL/USDT)</option>
+            <option value="BTCUSDT">BTC/USDT</option>
+            <option value="ETHUSDT">ETH/USDT</option>
+            <option value="SOLUSDT">SOL/USDT</option>
         </select>
         <select id="tfSelect" onchange="onAssetChange()">
-            <option value="1d">1 Day (1D)</option>
-            <option value="4h">4 Hours (4H)</option>
-            <option value="1h">1 Hour (1H)</option>
-            <option value="30m">30 Min</option>
-            <option value="15m" selected>15 Min</option>
-            <option value="5m">5 Min</option>
-            <option value="1m">1 Min</option>
+            <option value="1d">1D</option>
+            <option value="4h">4H</option>
+            <option value="1h">1H</option>
+            <option value="30m">30m</option>
+            <option value="15m" selected>15m</option>
+            <option value="5m">5m</option>
+            <option value="1m">1m</option>
         </select>
-        <button id="liveScannerBtn" class="btn-green" onclick="toggleLiveScanner()">▶ Start Live Trades</button>
-        <button id="backtestLoopBtn" class="btn-blue" onclick="toggleBacktestLoop()">▶ Start Multi-TF Backtest</button>
+        <button id="liveScannerBtn" class="btn-green" onclick="toggleLiveScanner()">▶ Start Live</button>
+        <button id="backtestLoopBtn" class="btn-blue" onclick="toggleBacktestLoop()">▶ Start Backtest</button>
     </div>
 
-    <!-- TOP BOARD: HIGH FREQUENCY LIVE TRADES (WITH KNOWLEDGE BASE & BROKERAGE PROTECTION) -->
+    <!-- TOP BOARD: LIVE TRADES -->
     <div class="card" style="border-color: #0ecb81;">
         <div class="card-title">
-            <span>⚡ LIVE SMART RALLY CATCHER (EMA + Volume Profile + OB)</span>
+            <span>⚡ LIVE RALLY CATCHER (EMA + OB + Buffer)</span>
             <span class="badge badge-live" id="tradeStateBadge">READY</span>
         </div>
         <div id="liveTradeBoard">
             <div style="font-size: 12px; color: #848e9c; text-align: center; padding: 15px;">
-                Click "Start Live Trades" to execute high-probability setups backed by saved knowledge base.
+                Click "Start Live" to execute high-probability setups with brokerage protection.
             </div>
         </div>
     </div>
 
-    <!-- MIDDLE BOARD: CLOSED TRADES & REAL HISTORY LOG -->
+    <!-- MIDDLE BOARD: TRADE HISTORY LOG -->
     <div class="card">
         <div class="card-title">
-            <span>📊 REAL TRADE HISTORY & PERFORMANCE LOG</span>
+            <span>📊 REAL TRADE HISTORY LOG</span>
             <span style="font-size: 10px; color: #0ecb81;" id="pnlTotal">Total PnL: +0.0 R</span>
         </div>
         <div style="overflow-x: auto;">
@@ -149,8 +149,8 @@
                         <th>Asset / TF</th>
                         <th>Type</th>
                         <th>Entry</th>
-                        <th>Target TP</th>
-                        <th>Stop Loss</th>
+                        <th>TP</th>
+                        <th>SL</th>
                         <th>Outcome</th>
                     </tr>
                 </thead>
@@ -161,17 +161,16 @@
         </div>
     </div>
 
-    <!-- BOTTOM BOARD: MULTI-TIMEFRAME CONTINUOUS BACKTESTING & KNOWLEDGE STORAGE -->
+    <!-- BOTTOM BOARD: BACKTEST MEMORY -->
     <div class="card" style="opacity: 0.95;">
         <div class="card-title">
-            <span>🔄 Multi-TF Backtest & Saved Knowledge Memory</span>
+            <span>🔄 Multi-TF Backtest & Saved Memory</span>
             <span id="backtestStatus" style="font-size: 10px; color: #848e9c;">Paused</span>
         </div>
-        <div class="metric-row">Active Backtest Timeframe: <span id="statActiveTF" style="color: #f0b90b;">15m</span></div>
-        <div class="metric-row">Total Real Candles Scanned: <span id="statIterations">0</span></div>
-        <div class="metric-row">Learned Knowledge Win Rate: <span id="statWinRate" style="color: #0ecb81;">0.0%</span></div>
-        <div class="metric-row">Active Institutional Labels: <span id="statLabels" style="color: #63b3ed;">Scanning Order Blocks & S/R...</span></div>
-        <div class="metric-row">Volume Profile / EMA Status: <span style="color: #0ecb81;">Confluence Active</span></div>
+        <div class="metric-row">Active Timeframe: <span id="statActiveTF" style="color: #f0b90b;">15m</span></div>
+        <div class="metric-row">Scanned Candles: <span id="statIterations">0</span></div>
+        <div class="metric-row">Learned Win Rate: <span id="statWinRate" style="color: #0ecb81;">0.0%</span></div>
+        <div class="metric-row">Order Blocks / S/R: <span id="statLabels" style="color: #63b3ed;">Waiting to scan...</span></div>
     </div>
 
     <script>
@@ -197,11 +196,11 @@
         };
 
         function saveMemory() {
-            localStorage.setItem('vidya_institutional_terminal_state', JSON.stringify(terminalMemory));
+            localStorage.setItem('vidya_terminal_v3_state', JSON.stringify(terminalMemory));
         }
 
         function loadMemory() {
-            let saved = localStorage.getItem('vidya_institutional_terminal_state');
+            let saved = localStorage.getItem('vidya_terminal_v3_state');
             if (saved) {
                 try {
                     terminalMemory = JSON.parse(saved);
@@ -215,8 +214,7 @@
             updateBacktestUI();
 
             if (terminalMemory.activeTrade) {
-                document.getElementById('tradeStateBadge').innerText = "RALLY TRADE ACTIVE";
-                monitorLivePrice();
+                document.getElementById('tradeStateBadge').innerText = "RALLY ACTIVE";
             }
         }
 
@@ -227,25 +225,29 @@
             saveMemory();
         }
 
-        // 1. Live Trades Toggle
         function toggleLiveScanner() {
             isLiveRunning = !isLiveRunning;
             let btn = document.getElementById('liveScannerBtn');
 
             if(isLiveRunning) {
-                btn.innerText = "⏸ Pause Live Trades";
+                btn.innerText = "⏸ Pause Live";
                 btn.className = "btn-red";
                 
                 if(!terminalMemory.activeTrade) generateKnowledgeBasedTrade();
-                liveScannerInterval = setInterval(generateKnowledgeBasedTrade, 10000);
+                liveScannerInterval = setInterval(generateKnowledgeBasedTrade, 8000);
                 priceTrackerInterval = setInterval(monitorLivePrice, 1000);
             } else {
-                btn.innerText = "▶ Start Live Trades";
+                btn.innerText = "▶ Start Live";
                 btn.className = "btn-green";
                 clearInterval(liveScannerInterval);
                 clearInterval(priceTrackerInterval);
             }
         }
 
-        // 2. Multi-TF Backtest Loop Toggle
-        function toggleBack
+        function toggleBacktestLoop() {
+            isBacktestRunning = !isBacktestRunning;
+            let btn = document.getElementById('backtestLoopBtn');
+            let status = document.getElementById('backtestStatus');
+
+            if(isBacktestRunning) {
+                btn.innerText =
