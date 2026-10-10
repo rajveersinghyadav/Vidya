@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidya - Order Flow Heatmap & Backtesting Engine</title>
+    <title>Vidya - Real SMC & Order Flow Engine</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -20,21 +20,21 @@
         .subtitle {
             font-size: 11px;
             color: #848e9c;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         .controls {
             display: flex;
             gap: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
         }
         select, button {
             background-color: #1e2329;
             color: #fff;
             border: 1px solid #2b313a;
-            padding: 8px 10px;
+            padding: 10px 12px;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 13px;
             outline: none;
             cursor: pointer;
         }
@@ -45,12 +45,12 @@
             font-weight: bold;
             width: 100%;
             padding: 12px;
-            margin-top: 8px;
+            margin-top: 10px;
         }
-        /* Bookmap Heatmap Simulated UI Box */
+        /* Bookmap Heatmap Visual Box */
         #heatmap-container {
             width: 100%;
-            height: 320px;
+            height: 300px;
             background: #0d1117;
             border-radius: 8px;
             border: 1px solid #30363d;
@@ -64,41 +64,33 @@
             position: relative;
         }
         .orderbook-side {
-            width: 80px;
+            width: 85px;
             background: #161b22;
             border-left: 1px solid #30363d;
             font-size: 10px;
-            padding: 5px;
+            padding: 6px;
             color: #848e9c;
             font-family: monospace;
         }
         .liquidity-level {
             position: absolute;
             width: 100%;
-            height: 3px;
-            background: rgba(255, 165, 0, 0.6);
+            height: 2px;
+            background: rgba(255, 165, 0, 0.7);
         }
         .volume-bubble {
             position: absolute;
             border-radius: 50%;
-            background: rgba(14, 203, 129, 0.7);
+            background: rgba(14, 203, 129, 0.75);
             border: 1px solid #0ecb81;
             transform: translate(-50%, -50%);
-        }
-        .backtest-box {
-            background-color: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 10px;
-            margin-top: 10px;
-            font-size: 12px;
         }
         .signal-box {
             background-color: #1e2329;
             border: 1px solid #2b313a;
             border-radius: 8px;
             padding: 12px;
-            margin-top: 10px;
+            margin-top: 12px;
         }
         .signal-box h3 { margin-top: 0; font-size: 14px; color: #0ecb81; }
         .metrics-grid {
@@ -120,51 +112,45 @@
 </head>
 <body>
 
-    <h1>Vidya - Order Flow Heatmap & Backtesting AI</h1>
-    <div class="subtitle">Bookmap Style Liquidity Levels, Delta Bubbles & Continuous Learning Engine</div>
+    <h1>Vidya - Order Flow & SMC Engine</h1>
+    <div class="subtitle">Live Heatmap Visualization & Real Mathematical Risk-Reward Calculation</div>
 
     <div class="controls">
         <select id="assetSelect" onchange="renderHeatmap()">
-            <option value="BTCUSDT">Bitcoin (BTC/USDT)</option>
-            <option value="ETHUSDT">Ethereum (ETH/USDT)</option>
-            <option value="SOLUSDT">Solana (SOL/USDT)</option>
-            <option value="XAUUSD">Gold (XAU/USD)</option>
+            <option value="BTCUSDT" data-pair="BTCUSDT">Bitcoin (BTC/USDT)</option>
+            <option value="ETHUSDT" data-pair="ETHUSDT">Ethereum (ETH/USDT)</option>
+            <option value="SOLUSDT" data-pair="SOLUSDT">Solana (SOL/USDT)</option>
+            <option value="XAUUSD" data-pair="XAUUSD">Gold (XAU/USD)</option>
         </select>
         <select id="tfSelect">
-            <option value="1m">1m Order Flow</option>
             <option value="15m" selected>15m Order Flow</option>
             <option value="1h">1h Order Flow</option>
+            <option value="4h">4h Order Flow</option>
         </select>
     </div>
 
-    <!-- Bookmap Style Order Flow Heatmap Visualizer -->
+    <!-- Bookmap Style Heatmap UI -->
     <div id="heatmap-container">
-        <div class="heatmap-grid" id="heatmapGrid">
-            <!-- Dynamic Liquidity Lines & Bubbles will be injected here -->
-        </div>
+        <div class="heatmap-grid" id="heatmapGrid"></div>
         <div class="orderbook-side" id="orderBookSide">
             <div style="color: #f6465d; font-weight: bold;">ASKS</div>
-            177.65 1500<br>177.50 9476<br>177.00 12623<br>
+            <span id="askPrice1">--</span><br>
+            <span id="askPrice2">--</span><br>
             <hr style="border-color:#30363d">
             <div style="color: #0ecb81; font-weight: bold;">BIDS</div>
-            176.90 200<br>176.50 1400<br>176.00 3100
+            <span id="bidPrice1">--</span><br>
+            <span id="bidPrice2">--</span>
         </div>
     </div>
 
-    <!-- Continuous Backtesting Status Box -->
-    <div class="backtest-box">
-        <b>🔄 Continuous Backtesting Status:</b> <span id="btStatus" style="color: #f0b90b;">Running iterations...</span><br>
-        • Total Candles Tested: <span id="btCount" style="color:#fff;">14,520</span> | Learned Win-Rate: <span id="btWinRate" style="color: #0ecb81; font-weight: bold;">84.2%</span>
-    </div>
-
-    <button class="btn-primary" onclick="runOrderFlowTradeSignal()">🚀 Calculate Order Flow Trade Signal</button>
+    <button class="btn-primary" onclick="calculateRealTradeSignal()">📊 Calculate Live Trade Signal</button>
 
     <!-- Signal Output Box -->
     <div class="signal-box">
-        <h3 id="signalStatus">Status: Waiting for Order Flow Trigger</h3>
+        <h3 id="signalStatus">Status: Ready for Live Analysis</h3>
         <div class="metrics-grid">
             <div class="metric-card">
-                <div class="metric-title">Entry Price</div>
+                <div class="metric-title">Live Entry Price</div>
                 <div class="metric-value" id="valEntry">--</div>
             </div>
             <div class="metric-card">
@@ -173,90 +159,4 @@
             </div>
             <div class="metric-card">
                 <div class="metric-title">Stop Loss (SL)</div>
-                <div class="metric-value" id="valSL" style="color: #f6465d;">--</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-title">Backtested Confluence</div>
-                <div class="metric-value" id="valRR">--</div>
-            </div>
-        </div>
-        <div class="reason-text" id="valReason">System is continuously backtesting historical liquidity absorption zones. Click button to fetch live order flow calculation.</div>
-    </div>
-
-    <script>
-        // Simulate Bookmap Heatmap & Bubbles rendering
-        function renderHeatmap() {
-            const grid = document.getElementById('heatmapGrid');
-            grid.innerHTML = '';
-
-            // Add simulated liquidity levels (horizontal heat bands like image)[span_2](start_span)[span_2](end_span)
-            for(let i=0; i<5; i++) {
-                let line = document.createElement('div');
-                let topPos = 20 + (i * 18);
-                line.className = 'liquidity-level';
-                line.style.top = topPos + '%';
-                line.style.background = i === 2 ? 'rgba(255, 69, 0, 0.8)' : 'rgba(255, 165, 0, 0.4)';
-                grid.appendChild(line);
-            }
-
-            // Add volume bubbles (green/red circles like Bookmap image)[span_3](start_span)[span_3](end_span)
-            for(let j=0; j<12; j++) {
-                let bubble = document.createElement('div');
-                bubble.className = 'volume-bubble';
-                let leftPos = 10 + (j * 7);
-                let topPos = 40 + Math.sin(j) * 25;
-                let size = 10 + Math.random() * 15;
-                bubble.style.left = leftPos + '%';
-                bubble.style.top = topPos + '%';
-                bubble.style.width = size + 'px';
-                bubble.style.height = size + 'px';
-                bubble.style.background = j % 2 === 0 ? 'rgba(14, 203, 129, 0.8)' : 'rgba(246, 70, 93, 0.8)';
-                grid.appendChild(bubble);
-            }
-        }
-
-        // Continuous Backtesting Simulator running in background
-        let iterCount = 14520;
-        setInterval(() => {
-            iterCount += Math.floor(Math.random() * 5 + 1);
-            document.getElementById('btCount').innerText = iterCount.toLocaleString();
-            let dynamicWr = (82 + Math.sin(iterCount)*2.5).toFixed(1);
-            document.getElementById('btWinRate').innerText = dynamicWr + '%';
-        }, 3000);
-
-        async function runOrderFlowTradeSignal() {
-            document.getElementById('signalStatus').innerText = "Status: Analyzing Depth of Market & Liquidity Absorption...";
-            document.getElementById('valReason').innerText = "Scanning order book imbalance, large limit order walls, and aggressive market order bubbles...";
-
-            const asset = document.getElementById('assetSelect').value;
-            let basePrice = asset.includes('BTC') ? 65000 : asset.includes('ETH') ? 3500 : asset.includes('SOL') ? 110 : 2650;
-
-            let slOffset = basePrice * 0.0018;
-            let tpOffset = basePrice * 0.0075;
-
-            let entry = basePrice.toFixed(2);
-            let sl = (basePrice - slOffset).toFixed(2);
-            let tp = (basePrice + tpOffset).toFixed(2);
-            let currentWinRate = document.getElementById('btWinRate').innerText;
-
-            setTimeout(() => {
-                document.getElementById('signalStatus').innerText = `Status: 🟢 ORDER FLOW ABSORPTION DETECTED (BUY)`;
-                document.getElementById('valEntry').innerText = `$${entry}`;
-                document.getElementById('valTP').innerText = `$${tp}`;
-                document.getElementById('valSL').innerText = `$${sl}`;
-                document.getElementById('valRR').innerText = `1 : 4.1 | ${currentWinRate}`;
-                
-                document.getElementById('valReason').innerHTML = `
-                    <b>Bookmap Order Flow Analysis:</b><br>
-                    • <b>Liquidity Wall:</b> Heavy limit buy orders absorbed selling pressure at support[span_4](start_span)[span_4](end_span).<br>
-                    • <b>Volume Bubbles:</b> Aggressive buyer clusters formed at structural low[span_5](start_span)[span_5](end_span).<br>
-                    • <b>Backtest Score:</b> Verified across 14,000+ candles with <b>${currentWinRate}</b> historical accuracy.<br>
-                    • <b>Execution Plan:</b> Target upper liquidity band with minimal risk.
-                `;
-            }, 700);
-        }
-
-        window.onload = renderHeatmap;
-    </script>
-</body>
-</html>
+                <div class="metric-value
