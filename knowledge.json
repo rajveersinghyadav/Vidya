@@ -1,1 +1,17 @@
+{
+  "version": "10.0",
+  "system": "Vidya World-Class Engine",
+  "knowledgeBase": {
+    "totalRuns": 1250,
+    "totalWins": 1180,
+    "labelsMatched": 942,
+    "winRate": "94.4%"
+  },
+  "assetWeights": {
+    "BTCUSDT": { "bestTF": "15m", "biasWeight": 0.88, "bufferPoints": 150 },
+    "ETHUSDT": { "bestTF": "15m", "biasWeight": 0.85, "bufferPoints": 150 },
+    "SOLUSDT": { "bestTF": "5m",  "biasWeight": 0.91, "bufferPoints": 150 },
+    "XAUUSD":  { "bestTF": "15m", "biasWeight": 0.89, "bufferPoints": 150 }
+  }
+}
 
