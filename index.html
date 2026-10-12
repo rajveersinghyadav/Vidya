@@ -16,16 +16,11 @@
         .btn-green { background-color: #0ecb81; color: #000; }
         .btn-blue { background-color: #2b6cb0; color: #fff; }
         .btn-red { background-color: #f6465d; color: #fff; }
-        .btn-purple { background-color: #805ad5; color: #fff; width: 100%; margin-top: 8px; }
         
         .metric-row { display: flex; justify-content: space-between; font-size: 11px; padding: 5px 0; border-bottom: 1px solid #21262d; }
         .metric-row span { color: #fff; font-weight: bold; }
         .badge-buy { background: rgba(14,203,129,0.2); color: #0ecb81; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
         .badge-sell { background: rgba(246,70,93,0.2); color: #f6465d; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
-
-        table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
-        th, td { border: 1px solid #21262d; padding: 6px; text-align: center; }
-        th { background: #1b2028; color: #848e9c; }
     </style>
 </head>
 <body>
@@ -78,11 +73,12 @@
         };
 
         function updateUI() {
+            if (typeof VidyaBacktesterModule === 'undefined') return;
             let state = VidyaBacktesterModule.getKnowledgeState();
-            document.getElementById('btTotalScans').innerText = state.totalScans;
-            document.getElementById('btAccuracy').innerText = state.calculatedWinRate.toFixed(1) + "%";
-            document.getElementById('btWins').innerText = state.rallyWins;
-            document.getElementById('btLosses').innerText = state.rallyLosses;
+            document.getElementById('btTotalScans').innerText = state.totalScans || 0;
+            document.getElementById('btAccuracy').innerText = (state.calculatedWinRate || 0).toFixed(1) + "%";
+            document.getElementById('btWins').innerText = state.rallyWins || 0;
+            document.getElementById('btLosses').innerText = state.rallyLosses || 0;
         }
 
         async function toggleRealBacktest() {
@@ -97,7 +93,7 @@
                         await VidyaBacktesterModule.runRealRallyBacktest(symbol);
                         updateUI();
                     }
-                }, 2000);
+                }, 1500);
             } else {
                 btn.innerText = "▶ Run Real Historical Backtest";
                 btn.className = "btn-blue";
