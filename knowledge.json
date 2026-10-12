@@ -1,19 +1,10 @@
 {
-  "version": "30.0",
-  "system": "Vidya Institutional Self-Learning Matrix",
-  "knowledgeBase": {
-    "totalBacktestedRuns": 7250,
-    "winningProbability": "98.2%",
-    "learningWeights": {
-      "LiquiditySweep": 0.97,
-      "OrderflowDelta": 0.94,
-      "MagnetZoneFVG": 0.99,
-      "PullbackRallyScale": 0.93
-    },
-    "sessionAccuracy": {
-      "londonOpen": 95.5,
-      "newYorkKillzone": 97.8,
-      "asianRange": 89.2
-    }
+  "version": "40.0",
+  "system": "Vidya Institutional Orderflow & Delta Matrix",
+  "persistentKnowledge": {
+    "totalScans": 0,
+    "wins": 0,
+    "losses": 0,
+    "winRate": 0.0
   }
 }
