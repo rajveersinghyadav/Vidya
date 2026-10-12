@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidya - Institutional Orderflow & Delta Terminal</title>
+    <title>Vidya - Institutional Sweep & Magnet Terminal</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0e11; color: #d1d4dc; margin: 0; padding: 12px; }
         h1 { font-size: 18px; color: #f0b90b; margin-bottom: 2px; }
@@ -24,17 +24,17 @@
 </head>
 <body>
 
-    <h1>Vidya - Institutional Orderflow & Delta Terminal</h1>
-    <div class="subtitle">Multi-Timeframe Top-Down + Orderflow Absorption + Real Calculated Accuracy</div>
+    <h1>Vidya - Institutional Sweep & Magnet Terminal</h1>
+    <div class="subtitle">Live Liquidity Sweep + Target Magnet Mapping + Real Historical Accuracy</div>
 
     <div class="controls">
-        <button id="scanAllBtn" class="btn-green" onclick="toggleLiveScan()">▶ Start Institutional Live Scan</button>
-        <button id="backtestBtn" class="btn-blue" onclick="toggleBacktest()">▶ Run Real Combination Backtest</button>
+        <button id="scanAllBtn" class="btn-green" onclick="toggleLiveScanner()">▶ Start Live Signal Engine</button>
+        <button id="backtestBtn" class="btn-blue" onclick="toggleBacktestLoop()">▶ Start Background Backtest</button>
     </div>
 
     <div class="card" style="border-color: #0ecb81;">
         <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 8px; display: flex; justify-content: space-between;">
-            <span>⚡ LIVE ASSET BOARD (BTC, ETH, SOL, GOLD)</span>
+            <span>⚡ LIVE SIGNAL & MAGNET BOARD (BTC, ETH, SOL, GOLD)</span>
             <span id="globalState" style="color: #0ecb81;">READY</span>
         </div>
         <div class="grid-4" id="multiAssetBoard">
@@ -46,14 +46,13 @@
     </div>
 
     <div class="card">
-        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px;">🧠 REAL BACKTESTED COMBINATION KNOWLEDGE</div>
-        <div class="metric-row">Total Historical Scans: <span id="btScans">0</span></div>
+        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px;">🧠 REAL BACKTESTED SWEEP & MAGNET ACCURACY</div>
+        <div class="metric-row">Total Historical Scans Run: <span id="btTotalScans">0</span></div>
         <div class="metric-row">Calculated Real Win Rate: <span id="btWinRate" style="color:#0ecb81;">0.0%</span></div>
-        <div class="metric-row">Historical Wins: <span id="btWins" style="color:#0ecb81;">0</span></div>
-        <div class="metric-row">Historical Losses: <span id="btLosses" style="color:#f6465d;">0</span></div>
+        <div class="metric-row">Historical Rally Wins: <span id="btWins" style="color:#0ecb81;">0</span></div>
+        <div class="metric-row">Historical Rally Losses: <span id="btLosses" style="color:#f6465d;">0</span></div>
     </div>
 
-    <script src="knowledge.json" type="application/json" id="knowledgeData"></script>
     <script src="strategies.js"></script>
     <script src="engine.js"></script>
     <script src="backtester.js"></script>
@@ -69,13 +68,13 @@
         function updateUI() {
             if (typeof VidyaBacktesterModule === 'undefined') return;
             let state = VidyaBacktesterModule.getState();
-            document.getElementById('btScans').innerText = state.totalScans || 0;
+            document.getElementById('btTotalScans').innerText = state.totalScans || 0;
             document.getElementById('btWinRate').innerText = (state.winRate || 0).toFixed(1) + "%";
             document.getElementById('btWins').innerText = state.wins || 0;
             document.getElementById('btLosses').innerText = state.losses || 0;
         }
 
-        async function toggleBacktest() {
+        async function toggleBacktestLoop() {
             isBacktesting = !isBacktesting;
             let btn = document.getElementById('backtestBtn');
             if (isBacktesting) {
@@ -83,70 +82,63 @@
                 btn.className = "btn-red";
                 btInterval = setInterval(async () => {
                     for (let sym of assetList) {
-                        await VidyaBacktesterModule.runHistoricalCombinationBacktest(sym);
+                        await VidyaBacktesterModule.runRealHistoricalSweepBacktest(sym);
                         updateUI();
                     }
                 }, 2000);
             } else {
-                btn.innerText = "▶ Run Real Combination Backtest";
+                btn.innerText = "▶ Start Background Backtest";
                 btn.className = "btn-blue";
                 clearInterval(btInterval);
             }
         }
 
-        function toggleLiveScan() {
+        function toggleLiveScanner() {
             isScanning = !isScanning;
             let btn = document.getElementById('scanAllBtn');
             if (isScanning) {
-                btn.innerText = "⏸ Pause Live Scan";
+                btn.innerText = "⏸ Pause Live Engine";
                 btn.className = "btn-red";
                 runLiveScan();
-                scanInterval = setInterval(runLiveScan, 6000);
+                scanInterval = setInterval(runLiveScan, 5000);
             } else {
-                btn.innerText = "▶ Start Institutional Live Scan";
+                btn.innerText = "▶ Start Live Signal Engine";
                 btn.className = "btn-green";
                 clearInterval(scanInterval);
             }
         }
 
         async function runLiveScan() {
-            let board = document.getElementById('multiAssetBoard');
+            let container = document.getElementById('multiAssetBoard');
             let html = '';
+
             for (let sym of assetList) {
-                let price = await StrategyStrategies.fetchLivePrice(sym);
-                let tfData = await StrategyStrategies.fetchMultiTFData(sym);
+                let tfData = await VidyaStrategies.fetchMultiTFData(sym);
                 if (tfData) {
-                    let htfBias = VidyaEngineModule.getHTFBias(tfData);
-                    let sweep = VidyaEngineModule.detectSessionSweep(tfData);
-                    let absorption = StrategyStrategies.calculateOrderflowDeltaAndAbsorption(tfData['1m']);
+                    let signal = VidyaEngineModule.evaluateLiquiditySweepAndMagnet(tfData);
 
-                    if (sweep.swept && absorption.absorption) {
-                        let isBuy = sweep.direction === 'BUY';
-                        let tp = isBuy ? price * 1.025 : price * 0.975;
-                        let sl = isBuy ? sweep.swingLow * 0.998 : sweep.swingHigh * 1.002;
-                        let risk = Math.abs(price - sl);
-                        let reward = Math.abs(tp - price);
-                        let rr = risk > 0 ? (reward / risk).toFixed(1) : "5.0";
-
+                    if (signal && signal.direction !== 'NEUTRAL') {
+                        let isBuy = signal.direction === 'BUY';
                         html += `
                             <div class="asset-card" style="border: 1px solid ${isBuy ? '#0ecb81' : '#f6465d'};">
-                                <div style="display:flex; justify-content:space-between;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
                                     <b>${sym}</b>
-                                    <span class="${isBuy ? 'badge-buy' : 'badge-sell'}">${sweep.direction} (1:${rr})</span>
+                                    <span class="${isBuy ? 'badge-buy' : 'badge-sell'}">${signal.direction} (${signal.rrRatio})</span>
                                 </div>
-                                <div class="metric-row">Bias: <span>${htfBias}</span></div>
-                                <div class="metric-row">Entry: <span>$${price.toFixed(2)}</span></div>
-                                <div class="metric-row">TP: <span style="color:#0ecb81;">$${tp.toFixed(2)}</span></div>
-                                <div class="metric-row">SL: <span style="color:#f6465d;">$${sl.toFixed(2)}</span></div>
-                                <div style="font-size:9px; color:#848e9c; margin-top:4px;">• Orderflow Absorption Detected</div>
+                                <div class="metric-row">Live Price: <span style="color:#f0b90b;">$${signal.currentPrice.toFixed(2)}</span></div>
+                                <div class="metric-row">Target Magnet (${signal.pendingMagnetName}): <span style="color:#0ecb81;">$${signal.targetMagnet.toFixed(2)}</span></div>
+                                <div class="metric-row">Protected SL: <span style="color:#f6465d;">$${signal.protectedSL.toFixed(2)}</span></div>
+                                <div style="font-size:9px; color:#848e9c; margin-top:4px;">
+                                    • ${signal.sweptLabelName} Liquidity Swept | Vol Spike Detected
+                                </div>
                             </div>
                         `;
                         continue;
                     }
                 }
-                html += `<div class="asset-card"><b>${sym}</b><br><span style="color:#848e9c; font-size:10px;">Scanning top-down delta...</span></div>`;
+                html += `<div class="asset-card"><b>${sym}</b><br><span style="color:#848e9c; font-size:10px;">Scanning sweeps & pending magnet target...</span></div>`;
             }
-            board.innerHTML = html;
+            container.innerHTML = html;
         }
     </script>
 </body>
