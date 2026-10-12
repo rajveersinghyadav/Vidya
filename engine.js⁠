@@ -1,36 +1,62 @@
 /**
- * Vidya Engine - Top-Down Bias, Session Sweeps & Big Player Reversals
+ * Vidya Institutional Engine Module
+ * Swept vs Pending Liquidity Tracking & Magnet Target Mapping
  */
 
 const VidyaEngineModule = {
-    getHTFBias: function(tfData) {
-        if (!tfData || !tfData['1d'] || !tfData['4h']) return "NEUTRAL";
-        let d1 = tfData['1d'];
-        let h4 = tfData['4h'];
-        
-        let d1Trend = d1[d1.length - 1].close > d1[d1.length - 5].close ? "BULLISH" : "BEARISH";
-        let h4Trend = h4[h4.length - 1].close > h4[h4.length - 5].close ? "BULLISH" : "BEARISH";
+    evaluateLiquiditySweepAndMagnet: function(tfData) {
+        if (!tfData) return null;
 
-        return d1Trend === h4Trend ? d1Trend : "CONSOLIDATION";
-    },
+        let labels = VidyaStrategies.extractLiquidityLabels(tfData);
+        let m1 = tfData['1m'];
+        if (!labels || !m1 || m1.length === 0) return null;
 
-    detectSessionSweep: function(tfData) {
-        if (!tfData || !tfData['15m']) return { swept: false };
-        let m15 = tfData['15m'];
-        let last = m15[m15.length - 1];
-        let prevRange = m15.slice(-20, -1);
+        let orderflow = VidyaStrategies.calculateOrderflowDelta(m1);
+        let currentPrice = orderflow.currentPrice;
 
-        let swingHigh = Math.max(...prevRange.map(c => c.high));
-        let swingLow = Math.min(...prevRange.map(c => c.low));
+        let { pdh, pdl, ash, asl } = labels;
 
-        let bullishSweep = last.low < swingLow && last.close > swingLow;
-        let bearishSweep = last.high > swingHigh && last.close < swingHigh;
+        let sweptLow = currentPrice < asl || currentPrice < pdl;
+        let sweptHigh = currentPrice > ash || currentPrice > pdh;
+
+        // Determine Market Direction Bias and Magnet Target
+        let direction = "NEUTRAL";
+        let targetMagnet = currentPrice;
+        let protectedSL = currentPrice;
+        let sweptLabelName = "";
+        let pendingMagnetName = "";
+
+        if (sweptLow && orderflow.isSpike) {
+            // Low Liquidity Swept -> Smart Money Buyer Entry -> Target Top Liquidity
+            direction = "BUY";
+            sweptLabelName = currentPrice < pdl ? "PDL" : "ASL";
+            pendingMagnetName = currentPrice < pdl ? "PDH" : "ASH";
+            targetMagnet = currentPrice < pdl ? pdh : ash;
+            protectedSL = Math.min(asl, pdl) * 0.9985; // Safe Protected Stop Loss
+        } else if (sweptHigh && orderflow.isSpike) {
+            // High Liquidity Swept -> Smart Money Seller Entry -> Target Bottom Liquidity
+            direction = "SELL";
+            sweptLabelName = currentPrice > pdh ? "PDH" : "ASH";
+            pendingMagnetName = currentPrice > pdh ? "PDL" : "ASL";
+            targetMagnet = currentPrice > pdh ? pdl : asl;
+            protectedSL = Math.max(ash, pdh) * 1.0015; // Safe Protected Stop Loss
+        }
+
+        let risk = Math.abs(currentPrice - protectedSL);
+        let reward = Math.abs(targetMagnet - currentPrice);
+        let rrRatio = risk > 0 ? (reward / risk).toFixed(1) : "3.5";
 
         return {
-            swept: bullishSweep || bearishSweep,
-            direction: bullishSweep ? 'BUY' : bearishSweep ? 'SELL' : 'NONE',
-            swingHigh,
-            swingLow
+            direction,
+            currentPrice,
+            targetMagnet,
+            protectedSL,
+            rrRatio: `1:${rrRatio}`,
+            sweptLabelName,
+            pendingMagnetName,
+            isAbsorption: orderflow.isAbsorption,
+            isSpike: orderflow.isSpike,
+            labels
         };
     }
 };
