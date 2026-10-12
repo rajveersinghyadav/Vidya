@@ -1,5 +1,5 @@
 /**
- * Vidya Self-Learning Institutional Engine (Pure Real Data)
+ * Vidya Self-Learning Institutional Engine (Full Feature Set)
  * Multi-Asset Scanning, SMC Sweeps, Magnet Targets & Pullback Rally Scaling
  */
 
@@ -50,12 +50,11 @@ const StrategyEngine = {
     calculateMagnetZone: function(candles15m, isBuy, currentPrice) {
         if (candles15m.length < 10) return currentPrice * (isBuy ? 1.015 : 0.985);
 
-        // Search for Unfilled Fair Value Gaps (FVG)
         for (let i = candles15m.length - 3; i >= 5; i--) {
             if (isBuy && candles15m[i].low > candles15m[i-2].high) {
-                return candles15m[i].low; // Bullish FVG Magnet Target
+                return candles15m[i].low; 
             } else if (!isBuy && candles15m[i].high < candles15m[i-2].low) {
-                return candles15m[i].high; // Bearish FVG Magnet Target
+                return candles15m[i].high; 
             }
         }
         
@@ -107,7 +106,6 @@ const StrategyEngine = {
 
         let magnetTarget = this.calculateMagnetZone(c15m, isBuy, currentPrice);
 
-        // Calculate Tight Non-Violable SL (Just outside liquidity sweep wick)
         let slBuffer = currentPrice * (symbol === 'BTCUSDT' ? 0.0015 : 0.002);
         let slPrice = isBuy ? (sweep.swingLow ? sweep.swingLow - slBuffer : currentPrice - slBuffer)
                             : (sweep.swingHigh ? sweep.swingHigh + slBuffer : currentPrice + slBuffer);
