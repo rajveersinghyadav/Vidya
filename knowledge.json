@@ -1,6 +1,13 @@
 {
-  "version": "50.0-Institutional",
-  "system": "Vidya Liquidity Sweep & Magnet Engine",
+  "version": "70.0-Institutional-SMC",
+  "systemName": "Vidya 6-TF SMC & Magnet Zone Engine",
+  "dataIntegrity": "100% Authentic Binance Klines - ZERO Fake/Dummy Data",
+  "strategyParameters": {
+    "timeframes": ["1d", "4h", "1h", "15m", "5m", "1m"],
+    "sweepLevels": ["PDH", "PDL", "ASH", "ASL"],
+    "volumeSpikeMultiplier": 1.8,
+    "minRRRatio": 2.5
+  },
   "knowledgeBase": {
     "totalScans": 0,
     "wins": 0,
