@@ -1,7 +1,7 @@
 {
-  "version": "40.0",
-  "system": "Vidya Institutional Orderflow & Delta Matrix",
-  "persistentKnowledge": {
+  "version": "50.0-Institutional",
+  "system": "Vidya Liquidity Sweep & Magnet Engine",
+  "knowledgeBase": {
     "totalScans": 0,
     "wins": 0,
     "losses": 0,
