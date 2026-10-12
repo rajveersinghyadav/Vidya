@@ -1,11 +1,15 @@
 {
-  "version": "70.0-Institutional-SMC",
-  "systemName": "Vidya 6-TF SMC & Magnet Zone Engine",
-  "dataIntegrity": "100% Authentic Binance Klines - ZERO Fake/Dummy Data",
+  "version": "100.0-Institutional-Master",
+  "systemName": "Vidya Institutional SMC + Delta Imbalance Terminal",
+  "dataIntegrity": "100% Authentic Binance WebSockets & Klines - ZERO Fake Data",
+  "walletConfig": {
+    "initialBalance": 10000.0,
+    "riskPerTradePercent": 2.0
+  },
   "strategyParameters": {
     "timeframes": ["1d", "4h", "1h", "15m", "5m", "1m"],
-    "sweepLevels": ["PDH", "PDL", "ASH", "ASL"],
-    "volumeSpikeMultiplier": 1.8,
+    "sweepLabels": ["PDH", "PDL", "ASH", "ASL"],
+    "minDeltaImbalanceRatio": 2.2,
     "minRRRatio": 2.5
   },
   "knowledgeBase": {
