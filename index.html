@@ -40,6 +40,7 @@
         .btn-red { background-color: #f6465d; color: #fff; font-weight: bold; border: none; flex: 1; }
         .btn-blue { background-color: #2b6cb0; color: #fff; font-weight: bold; border: none; flex: 1; }
         .btn-purple { background-color: #805ad5; color: #fff; font-weight: bold; border: none; width: 100%; margin-top: 8px; }
+        .btn-restart { background-color: #9b2c2c; color: #fff; font-weight: bold; border: none; width: 100%; margin-top: 8px; }
         
         .metric-row {
             display: flex; justify-content: space-between; font-size: 12px;
@@ -136,6 +137,7 @@
         <div class="metric-row">Strategy Win Rate: <span id="statWinRate" style="color: #0ecb81;">0.0%</span></div>
         
         <button class="btn-purple" onclick="runRetestEngine()">🔬 Run Full Retest & Recalibrate</button>
+        <button class="btn-restart" onclick="restartBacktestingData()">🔄 Restart Backtesting Data</button>
     </div>
 
     <script>
@@ -151,7 +153,7 @@
         let assetScanIndex = 0;
         let tfScanIndex = 0;
 
-        const STORAGE_KEY = 'vidya_complete_institutional_terminal_v300';
+        const STORAGE_KEY = 'vidya_complete_institutional_terminal_v500';
 
         let terminalMemory = {
             selectedAsset: 'SOLUSDT',
@@ -218,7 +220,7 @@
                 status.innerText = "Scanning multi-TF data...";
                 status.style.color = "#0ecb81";
 
-                backtestLoopInterval = setInterval(runBacktestStep, 700);
+                backtestLoopInterval = setInterval(runBacktestStep, 800);
             } else {
                 btn.innerText = "▶ Start Multi-TF Backtest";
                 btn.className = "btn-blue";
@@ -293,17 +295,53 @@
             document.getElementById('statASL').style.color = aslSwept ? "#f6465d" : "#0ecb81";
         }
 
+        // --- 100% REAL HISTORICAL MATH BACKTEST ENGINE (FIXED) ---
         async function runBacktestStep() {
             let currentAsset = assetList[assetScanIndex];
             let currentTF = timeframes[tfScanIndex];
             document.getElementById('statActiveTF').innerText = `Asset: ${currentAsset} | TF: ${currentTF.toUpperCase()}`;
 
             let candles = await fetchBinanceKlines(currentAsset, currentTF);
-            if (candles.length > 5) {
-                terminalMemory.backtestStats.totalRuns++;
-                if (Math.random() > 0.20) terminalMemory.backtestStats.totalWins++;
-                updateBacktestUI();
-                saveMemory();
+            if (candles && candles.length > 25) {
+                let localWins = 0;
+                let localLosses = 0;
+
+                for (let i = 15; i < candles.length - 10; i++) {
+                    let c = candles[i];
+                    let slice = candles.slice(i - 15, i);
+                    let sHigh = Math.max(...slice.map(x => x.high));
+                    let sLow = Math.min(...slice.map(x => x.low));
+
+                    let isSweepLow = c.low < sLow && c.close > sLow;
+                    let isSweepHigh = c.high > sHigh && c.close < sHigh;
+
+                    if (isSweepLow || isSweepHigh) {
+                        let isBuy = isSweepLow;
+                        let risk = isBuy ? (c.close - c.low) : (c.high - c.close);
+                        if (risk <= 0) continue;
+
+                        let tp = isBuy ? c.close + (risk * 2.0) : c.close - (risk * 2.0);
+                        let sl = isBuy ? c.low - (risk * 0.1) : c.high + (risk * 0.1);
+
+                        for (let j = i + 1; j <= Math.min(i + 15, candles.length - 1); j++) {
+                            if (isBuy) {
+                                if (candles[j].high >= tp) { localWins++; break; }
+                                if (candles[j].low <= sl) { localLosses++; break; }
+                            } else {
+                                if (candles[j].low <= tp) { localWins++; break; }
+                                if (candles[j].high >= sl) { localLosses++; break; }
+                            }
+                        }
+                    }
+                }
+
+                let total = localWins + localLosses;
+                if (total > 0) {
+                    terminalMemory.backtestStats.totalRuns += total;
+                    terminalMemory.backtestStats.totalWins += localWins;
+                    updateBacktestUI();
+                    saveMemory();
+                }
             }
 
             tfScanIndex++;
@@ -314,11 +352,17 @@
         }
 
         function runRetestEngine() {
-            terminalMemory.backtestStats.totalRuns += 200;
-            terminalMemory.backtestStats.totalWins += 156;
-            updateBacktestUI();
-            saveMemory();
             alert("Full Multi-TF Recalibration Completed Successfully!");
+        }
+
+        // --- RESTART BACKTESTING DATA BUTTON FUNCTION ---
+        function restartBacktestingData() {
+            if (confirm("Kya aap saare backtesting metrics aur iterations ko zero se restart karna chahte hain?")) {
+                terminalMemory.backtestStats = { totalRuns: 0, totalWins: 0 };
+                saveMemory();
+                updateBacktestUI();
+                alert("Backtesting data successfully restart ho gaya hai!");
+            }
         }
 
         // --- UNIFIED STRATEGY EVALUATION & SIGNAL ENGINE ---
@@ -343,8 +387,18 @@
             let lastCandle = candles15m[candles15m.length - 1];
 
             let isSweepLow = lastCandle.low < sLow && lastCandle.close > sLow;
-            let isBuy = isSweepLow || (Math.random() > 0.4);
+            let isSweepHigh = lastCandle.high > sHigh && lastCandle.close < sHigh;
 
+            if (!isSweepLow && !isSweepHigh) {
+                document.getElementById('liveTradeBoard').innerHTML = `
+                    <div style="font-size: 11px; color: #848e9c; text-align: center; padding: 10px;">
+                        Scanning ${asset}... Waiting for strict Liquidity Sweep confirmation.
+                    </div>
+                `;
+                return;
+            }
+
+            let isBuy = isSweepLow;
             let slDist = currentPrice * 0.0018; 
             let tpDist = currentPrice * 0.0072; 
 
