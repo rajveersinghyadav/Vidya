@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidya - Institutional Self-Learning Terminal</title>
+    <title>Vidya - Real-Time Execution Terminal</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0e11; color: #d1d4dc; margin: 0; padding: 12px; }
         h1 { font-size: 18px; color: #f0b90b; margin-bottom: 2px; }
@@ -32,8 +32,8 @@
 </head>
 <body>
 
-    <h1>Vidya - Complete Institutional Self-Learning Terminal</h1>
-    <div class="subtitle">4-Asset Live Board + Real Wallet PnL History + Self-Learning Weights & Direct Clicks</div>
+    <h1>Vidya - Real-Time Execution Terminal</h1>
+    <div class="subtitle">4-Asset Live Board + Real Market TP/SL Execution + Self-Learning Weights</div>
 
     <!-- CONTROLS -->
     <div class="controls">
@@ -58,7 +58,7 @@
     <!-- MIDDLE BOARD: REAL WALLET HISTORY -->
     <div class="card">
         <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px; display: flex; justify-content: space-between;">
-            <span>📊 REAL WALLET TRADE HISTORY & PnL RATIO</span>
+            <span>📊 REAL MARKET EXECUTED TRADE HISTORY & PnL</span>
             <span style="font-size: 10px; color: #0ecb81;" id="walletSummary">Win Ratio: 0% | PnL: +0.0 R</span>
         </div>
         <div style="overflow-x: auto;">
@@ -70,11 +70,11 @@
                         <th>Entry</th>
                         <th>Target TP</th>
                         <th>Stop Loss</th>
-                        <th>Outcome</th>
+                        <th>Actual Outcome</th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody">
-                    <tr><td colspan="6" style="color: #848e9c;">No trade history logged yet. Memory is persistent.</td></tr>
+                    <tr><td colspan="6" style="color: #848e9c;">No trades closed in real market yet. Waiting for TP/SL hit...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -101,7 +101,7 @@
         let btInterval = null;
 
         const assetList = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XAUUSD'];
-        const STORAGE_KEY = 'vidya_complete_terminal_v24';
+        const STORAGE_KEY = 'vidya_real_execution_v25';
 
         let systemMemory = {
             activeTrades: {},
@@ -153,7 +153,7 @@
             isScanning = !isScanning;
             let btn = document.getElementById('scanAllBtn');
             if (isScanning) {
-                btn.innerText = "⏸ Pause Multi-Asset Live Scan";
+                btn.innerText = "⏸ Pause Live Scan & Execution";
                 btn.className = "btn-red";
                 runFullMultiScan();
                 scanInterval = setInterval(runFullMultiScan, 6000);
@@ -166,40 +166,49 @@
 
         async function runFullMultiScan() {
             let stateBadge = document.getElementById('globalState');
-            if(stateBadge) stateBadge.innerText = "SCANNING ASSETS...";
-            let results = {};
+            if(stateBadge) stateBadge.innerText = "MONITORING REAL MARKET TP/SL...";
+            let results = { ...systemMemory.activeTrades };
 
             for (let symbol of assetList) {
-                if (systemMemory.activeTrades[symbol] && systemMemory.activeTrades[symbol].locked) {
-                    results[symbol] = systemMemory.activeTrades[symbol];
-                    let livePrice = await StrategyEngine.fetchExactLivePrice(symbol);
+                let livePrice = await StrategyEngine.fetchExactLivePrice(symbol);
+
+                // If active trade exists, check if real market hit TP or SL
+                if (results[symbol] && results[symbol].locked) {
                     let t = results[symbol];
                     let hitTP = t.type === 'BUY' ? livePrice >= t.tp : livePrice <= t.tp;
                     let hitSL = t.type === 'BUY' ? livePrice <= t.sl : livePrice >= t.sl;
 
-                    if (hitTP || hitSL) {
-                        logClosedTrade(symbol, t, hitTP ? 'TP HIT 🎯' : 'SL HIT ❌', hitTP);
-                        delete results[symbol];
+                    if (hitTP) {
+                        logClosedTrade(symbol, t, 'TP HIT 🎯', true);
+                        delete results[symbol]; // Trade closed, free slot for next setup
+                    } else if (hitSL) {
+                        logClosedTrade(symbol, t, 'SL HIT ❌', false);
+                        delete results[symbol]; // Trade closed, free slot for next setup
+                    } else {
+                        // Update live price display in active trade card
+                        t.currentPrice = livePrice;
                     }
                     continue;
                 }
 
+                // If no active trade, scan for a new high-probability setup
                 let sig = await StrategyEngine.evaluateAssetSignal(symbol);
                 if (sig) {
                     sig.locked = true;
+                    sig.currentPrice = livePrice;
                     results[symbol] = sig;
                 }
             }
 
             systemMemory.activeTrades = results;
             saveMemory();
-            if(stateBadge) stateBadge.innerText = "LIVE & PROTECTED";
+            if(stateBadge) stateBadge.innerText = "LIVE & MONITORING";
             renderBoard(results);
         }
 
         function logClosedTrade(symbol, t, outcome, isWin) {
             let rVal = t.rr.split(':')[1] || '4.0';
-            let closed = { ...t, outcome, rVal: isWin ? `+${rVal} R` : '-1.0 R' };
+            let closed = { ...t, outcome, rVal: isWin ? `+${rVal} R` : '-1.0 R', closedAt: new Date().toLocaleTimeString() };
             
             if (isWin) {
                 systemMemory.totalPnLR += parseFloat(rVal) || 4;
@@ -224,19 +233,20 @@
                 if (d) {
                     let isBuy = d.type === 'BUY';
                     html += `
-                        <div class="asset-card">
+                        <div class="asset-card" style="border: 1px solid ${isBuy ? '#0ecb81' : '#f6465d'};">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <b>${symbol}</b>
                                 <span class="${isBuy ? 'badge-buy' : 'badge-sell'}">${d.type} (${d.rr})</span>
                             </div>
-                            <div class="metric-row">Live Entry: <span>$${d.entry.toFixed(2)}</span></div>
+                            <div class="metric-row">Live Price: <span style="color:#f0b90b;">$${d.currentPrice ? d.currentPrice.toFixed(2) : d.entry.toFixed(2)}</span></div>
+                            <div class="metric-row">Locked Entry: <span>$${d.entry.toFixed(2)}</span></div>
                             <div class="metric-row">Target TP: <span style="color:#0ecb81;">$${d.tp.toFixed(2)}</span></div>
                             <div class="metric-row">Tight SL: <span style="color:#f6465d;">$${d.sl.toFixed(2)}</span></div>
                             <div style="font-size:9px; color:#848e9c; margin-top:4px;">• ${d.logic}</div>
                         </div>
                     `;
                 } else {
-                    html += `<div class="asset-card"><b>${symbol}</b><br><span style="color:#848e9c; font-size:10px;">Scanning klines...</span></div>`;
+                    html += `<div class="asset-card"><b>${symbol}</b><br><span style="color:#848e9c; font-size:10px;">Scanning real market setup...</span></div>`;
                 }
             });
             container.innerHTML = html;
@@ -255,7 +265,7 @@
             if (!tbody) return;
             
             if (!systemMemory.historyLog || systemMemory.historyLog.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="color: #848e9c;">No trade history logged yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="color: #848e9c;">No trades closed in real market yet. Waiting for TP/SL hit...</td></tr>`;
                 return;
             }
 
@@ -263,11 +273,11 @@
             systemMemory.historyLog.forEach(t => {
                 html += `
                     <tr>
-                        <td><b>${t.symbol}</b><br><span style="color:#848e9c; font-size:9px;">${t.mode}</span></td>
+                        <td><b>${t.symbol}</b><br><span style="color:#848e9c; font-size:9px;">${t.closedAt || ''}</span></td>
                         <td style="color:#0ecb81;">${t.type}</td>
                         <td>$${t.entry.toFixed(2)}</td>
-                        <td style="color:#0ecb81;">$${t.tp.toFixed(2)}</td>
-                        <td style="color:#f6465d;">$${t.sl.toFixed(2)}</td>
+                        <td style="color:#0ecb81; font-weight:bold;">$${t.tp.toFixed(2)}</td>
+                        <td style="color:#f6465d; font-weight:bold;">$${t.sl.toFixed(2)}</td>
                         <td><span class="badge ${t.outcome.includes('TP') ? 'badge-tp' : 'badge-sl'}">${t.outcome} (${t.rVal})</span></td>
                     </tr>
                 `;
