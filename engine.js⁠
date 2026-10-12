@@ -1,100 +1,24 @@
 /**
- * Vidya Institutional Engine - Pure Real Binance Multi-TF & Session Analysis
- * Zero Dummy Data. Direct API Calculation for 1D, 4H, 1H, 30m, 15m, 1m.
+ * Vidya Engine Module - Multi-TF Label Extraction & Sweep Detection
  */
 
-const VidyaEngine = {
-    // 1. Fetch Real Binance Spot Price (Gold via PAXGUSDT)
-    fetchLivePrice: async function(symbol) {
-        let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
-        try {
-            let res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${apiSymbol}`);
-            let json = await res.json();
-            return parseFloat(json.price);
-        } catch(e) {
-            console.error("Live Price Fetch Error:", e);
-            return null;
-        }
-    },
-
-    // 2. Fetch Real Historical Klines across Multi-Timeframes
-    fetchMultiTFKlines: async function(symbol) {
-        let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
-        const intervals = ['1d', '4h', '1h', '30m', '15m', '1m'];
-        let multiData = {};
-
-        try {
-            for (let tf of intervals) {
-                let limit = tf === '1m' ? 100 : 50; // More depth for 1m pinpoint entries
-                let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=${tf}&limit=${limit}`);
-                let data = await res.json();
-                multiData[tf] = data.map(k => ({
-                    time: k[0],
-                    open: parseFloat(k[1]),
-                    high: parseFloat(k[2]),
-                    low: parseFloat(k[3]),
-                    close: parseFloat(k[4]),
-                    volume: parseFloat(k[5])
-                }));
-            }
-            return multiData;
-        } catch(e) {
-            console.error("Multi-TF Klines Fetch Error:", e);
-            return null;
-        }
-    },
-
-    // 3. Extract Macro Labels & Session Liquidity Pools
-    extractMacroAndSessionLabels: function(tfData) {
-        if (!tfData || !tfData['1d'] || !tfData['4h'] || !tfData['1h']) return null;
-
-        // Macro Major Labels (1D & 4H)
-        let macroHigh = Math.max(...tfData['1d'].map(c => c.high));
-        let macroLow = Math.min(...tfData['1d'].map(c => c.low));
-        let h4High = Math.max(...tfData['4h'].map(c => c.high));
-        let h4Low = Math.min(...tfData['4h'].map(c => c.low));
-
-        // Session Liquidity Pools (1H & 30m - Asian/London/NY High-Low clusters)
-        let h1Candles = tfData['1h'];
-        let recentSessionHigh = Math.max(...h1Candles.slice(-12).map(c => c.high)); // Last 12 hours
-        let recentSessionLow = Math.min(...h1Candles.slice(-12).map(c => c.low));
-
-        let currentPrice = tfData['1m'][tfData['1m'].length - 1].close;
-        let macroBias = currentPrice >= tfData['1d'][0].open ? "BULLISH" : "BEARISH";
-
-        return {
-            macroBias,
-            macroHigh,
-            macroLow,
-            h4High,
-            h4Low,
-            sessionHigh: recentSessionHigh,
-            sessionLow: recentSessionLow,
-            currentPrice
-        };
-    },
-
-    // 4. Detect True Liquidity Sweep & Volume Aggression (15m & 1m)
+const VidyaEngineModule = {
     detectLiquiditySweepAndDelta: function(tfData) {
         if (!tfData || !tfData['15m'] || !tfData['1m']) return { swept: false };
-
         let m15 = tfData['15m'];
         let m1 = tfData['1m'];
-
         let lastM15 = m15[m15.length - 1];
-        let prevM15 = m15.slice(m15.length - 20, m15.length - 1);
+        let prevM15 = m15.slice(m15.length - 15, m15.length - 1);
 
         let swingHigh = Math.max(...prevM15.map(c => c.high));
         let swingLow = Math.min(...prevM15.map(c => c.low));
 
-        // Volume Delta Aggression Check
         let avgVol = m15.reduce((acc, c) => acc + c.volume, 0) / m15.length;
-        let isVolumeSpike = lastM15.volume >= (avgVol * 0.85);
+        let isVolumeSpike = lastM15.volume >= (avgVol * 0.80);
 
         let bullishSweep = (lastM15.low < swingLow && lastM15.close > swingLow) && isVolumeSpike;
         let bearishSweep = (lastM15.high > swingHigh && lastM15.close < swingHigh) && isVolumeSpike;
 
-        // Pinpoint Entry check on 1m chart
         let m1Last = m1[m1.length - 1];
 
         return {
@@ -106,24 +30,10 @@ const VidyaEngine = {
         };
     },
 
-    // 5. Calculate Magnet FVG Target for Massive Rallies (1:3 to 1:20 R:R)
-    calculateMagnetTP: function(tfData, direction) {
-        let m15 = tfData['15m'];
-        if (!m15 || m15.length < 10) return null;
-
-        let isBuy = direction === 'BUY';
-        
-        // Scan for unfilled Fair Value Gaps (FVG)
-        for (let i = m15.length - 3; i >= 5; i--) {
-            if (isBuy && m15[i].low > m15[i-2].high) {
-                return m15[i].low; // FVG Magnet Target Up
-            } else if (!isBuy && m15[i].high < m15[i-2].low) {
-                return m15[i].high; // FVG Magnet Target Down
-            }
-        }
-
-        let highest = Math.max(...m15.map(c => c.high));
-        let lowest = Math.min(...m15.map(c => c.low));
-        return isBuy ? highest * 1.015 : lowest * 0.985;
+    getSessionInfo: function() {
+        let currentHour = new Date().getUTCHours();
+        if (currentHour >= 7 && currentHour <= 10) return "LONDON KILLZONE";
+        if (currentHour >= 13 && currentHour <= 16) return "NEW YORK KILLZONE";
+        return "ASIAN RANGE";
     }
 };
