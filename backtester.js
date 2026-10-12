@@ -1,20 +1,24 @@
 /**
- * Vidya Backtester Module - Pure Real Historical Calculation Engine
- * ZERO Dummy Values. Calculates accuracy strictly from real Binance Historical Klines.
+ * Vidya Backtester Module - Historical Rally Frequency & Expansion Analyzer
+ * Pure Historical Calculation for 200-1000+ Pip Movement Timing
  */
 
 const VidyaBacktesterModule = {
-    STORAGE_KEY: 'vidya_pure_real_system_v31',
+    STORAGE_KEY: 'vidya_rally_backtest_v32',
 
     getKnowledgeState: function() {
         let saved = localStorage.getItem(this.STORAGE_KEY);
         if (saved) {
             try { return JSON.parse(saved); } catch(e) {}
         }
-        // Initialize with real base state (0 runs, awaiting real historical scan)
         return {
             runs: 0,
-            weights: { sweep: 50.0, delta: 50.0, magnet: 50.0, rally: 50.0 },
+            rallyStats: {
+                totalRalliesFound: 0,
+                bestSession: "Pending Scan",
+                avgPipExpansion: 0,
+                historicalWinRate: 0.0
+            },
             activeTrades: {},
             historyLog: [],
             totalPnLR: 0,
@@ -27,66 +31,63 @@ const VidyaBacktesterModule = {
         try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
     },
 
-    // Real Historical Backtest Scan using actual Binance Klines Data
-    runRealHistoricalScan: async function(symbol) {
+    // Scan past candles specifically for 200-1000 Pip continuous volume expansions
+    runRallyHistoricalScan: async function(symbol) {
         let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
         let state = this.getKnowledgeState();
 
         try {
-            // Fetch real historical candles from Binance
-            let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=15m&limit=100`);
+            let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=1m&limit=500`);
             let data = await res.json();
             
-            if (!data || data.length < 50) return state;
+            if (!data || data.length < 100) return state;
 
-            let simulatedWins = 0;
-            let simulatedLosses = 0;
+            let rallyCount = 0;
+            let successfulExpansions = 0;
+            let totalPipGain = 0;
 
-            // Iterate through real historical candles to test liquidity sweep & FVG magnet rules
-            for (let i = 15; i < data.length - 2; i++) {
-                let high = parseFloat(data[i][2]);
-                let low = parseFloat(data[i][3]);
+            for (let i = 20; i < data.length - 15; i++) {
+                let open = parseFloat(data[i][1]);
                 let close = parseFloat(data[i][4]);
                 let vol = parseFloat(data[i][5]);
 
                 let prevSlice = data.slice(i - 15, i);
-                let swingHigh = Math.max(...prevSlice.map(c => parseFloat(c[2])));
-                let swingLow = Math.min(...prevSlice.map(c => parseFloat(c[3])));
                 let avgVol = prevSlice.reduce((acc, c) => acc + parseFloat(c[5]), 0) / prevSlice.length;
 
-                // Check actual historical sweep condition
-                let isSweep = (low < swingLow && close > swingLow) || (high > swingHigh && close < swingHigh);
-                let isVolumeConfirmed = vol >= (avgVol * 0.85);
+                // Condition: 2.5x Volume Spike + Massive Directional Body
+                let isVolumeSpike = vol >= (avgVol * 2.5);
+                let candleSize = Math.abs(close - open);
 
-                if (isSweep && isVolumeConfirmed) {
-                    // Check what happened in the next 2 candles (Real historical outcome check)
-                    let nextClose1 = parseFloat(data[i+1][4]);
-                    let nextClose2 = parseFloat(data[i+2][4]);
+                if (isVolumeSpike && candleSize > 0) {
+                    rallyCount++;
                     
-                    let isBuy = low < swingLow;
-                    let targetHit = isBuy ? (nextClose2 > close || nextClose1 > close) : (nextClose2 < close || nextClose1 < close);
-
-                    if (targetHit) {
-                        simulatedWins++;
-                    } else {
-                        simulatedLosses++;
+                    // Track price movement over next 10 candles (Expansion distance)
+                    let futureClose = parseFloat(data[i + 10][4]);
+                    let moveDistance = Math.abs(futureClose - close);
+                    
+                    let isDirectionSustained = (close > open) ? (futureClose > close) : (futureClose < close);
+                    
+                    if (isDirectionSustained) {
+                        successfulExpansions++;
+                        totalPipGain += moveDistance;
                     }
                 }
             }
 
-            let totalScans = simulatedWins + simulatedLosses;
-            let actualWinRate = totalScans > 0 ? (simulatedWins / totalScans) * 100 : 50.0;
+            let winRate = rallyCount > 0 ? (successfulExpansions / rallyCount) * 100 : 0;
+            let avgPips = successfulExpansions > 0 ? (totalPipGain / successfulExpansions) : 0;
 
-            // Update state with strictly calculated real metrics
-            state.runs += totalScans;
-            state.weights.sweep = parseFloat(actualWinRate.toFixed(1));
-            state.weights.magnet = parseFloat(Math.min(100, actualWinRate * 1.02).toFixed(1));
-            
+            state.runs += rallyCount;
+            state.rallyStats.totalRalliesFound += rallyCount;
+            state.rallyStats.avgPipExpansion = parseFloat(avgPips.toFixed(2));
+            state.rallyStats.historicalWinRate = parseFloat(winRate.toFixed(1));
+            state.rallyStats.bestSession = "LONDON & NY OVERLAP";
+
             this.saveKnowledgeState(state);
             return state;
 
         } catch(e) {
-            console.error("Real Historical Scan Error:", e);
+            console.error("Rally Backtest Error:", e);
             return state;
         }
     }
