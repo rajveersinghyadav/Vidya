@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidya - Ultimate Institutional & High-Frequency Trading Terminal</title>
+    <title>Vidya - Complete Institutional & High-Frequency Trading Terminal</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -60,8 +60,8 @@
 </head>
 <body>
 
-    <h1>Vidya - Unified Institutional Trading Terminal</h1>
-    <div class="subtitle">Multi-TF Confluence Engine + High-Frequency Rally Catcher + Persistent Wallet Management</div>
+    <h1>Vidya - Complete Institutional & High-Frequency Trading Terminal</h1>
+    <div class="subtitle">Multi-TF Confluence Engine + Comprehensive Liquidity State Mapper + Persistent Wallet Management</div>
 
     <!-- Controls -->
     <div class="controls">
@@ -73,6 +73,18 @@
         </select>
         <button id="liveScannerBtn" class="btn-green" onclick="toggleLiveScanner()">▶ Start Live Engine</button>
         <button id="backtestLoopBtn" class="btn-blue" onclick="toggleBacktestLoop()">▶ Start Multi-TF Backtest</button>
+    </div>
+
+    <!-- LIQUIDITY STATE MAPPER BOARD -->
+    <div class="card" style="border-color: #f0b90b;">
+        <div class="card-title">
+            <span>🔍 CONTINUOUS LIQUIDITY MAPPER (SWEEP STATUS)</span>
+            <span class="badge badge-live" id="mapperStatus">TRACKING ACTIVE</span>
+        </div>
+        <div class="metric-row">Previous Day High (PDH): <span id="mapPDH">Loading...</span> <span id="statPDH" class="badge">--</span></div>
+        <div class="metric-row">Previous Day Low (PDL): <span id="mapPDL">Loading...</span> <span id="statPDL" class="badge">--</span></div>
+        <div class="metric-row">Asian Session High (ASH): <span id="mapASH">Loading...</span> <span id="statASH" class="badge">--</span></div>
+        <div class="metric-row">Asian Session Low (ASL): <span id="mapASL">Loading...</span> <span id="statASL" class="badge">--</span></div>
     </div>
 
     <!-- TOP BOARD: LIVE CONFLUENCE TRADES -->
@@ -139,7 +151,7 @@
         let assetScanIndex = 0;
         let tfScanIndex = 0;
 
-        const STORAGE_KEY = 'vidya_unified_terminal_v100';
+        const STORAGE_KEY = 'vidya_complete_institutional_terminal_v300';
 
         let terminalMemory = {
             selectedAsset: 'SOLUSDT',
@@ -163,6 +175,7 @@
             document.getElementById('assetSelect').value = terminalMemory.selectedAsset || 'SOLUSDT';
             renderHistoryUI();
             updateBacktestUI();
+            updateLiquidityMapper();
 
             if (terminalMemory.activeTrade) {
                 document.getElementById('tradeStateBadge').innerText = "TRADE LOCKED & PROTECTED";
@@ -172,6 +185,7 @@
         function onAssetChange() {
             terminalMemory.selectedAsset = document.getElementById('assetSelect').value;
             saveMemory();
+            updateLiquidityMapper();
         }
 
         function toggleLiveScanner() {
@@ -217,7 +231,7 @@
         async function fetchBinanceKlines(symbol, interval) {
             let apiSymbol = symbol === 'XAUUSD' ? 'BTCUSDT' : symbol;
             try {
-                let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=${interval}&limit=40`);
+                let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=${interval}&limit=50`);
                 let data = await res.json();
                 return data.map(k => ({
                     open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]),
@@ -234,6 +248,49 @@
                 let price = parseFloat(json.price);
                 return symbol === 'XAUUSD' ? price * 0.041 : price;
             } catch(e) { return 65000; }
+        }
+
+        // --- COMPREHENSIVE LIQUIDITY STATE MAPPER ---
+        async function updateLiquidityMapper() {
+            let asset = terminalMemory.selectedAsset;
+            let [d1, h1] = await Promise.all([
+                fetchBinanceKlines(asset, '1d'),
+                fetchBinanceKlines(asset, '1h')
+            ]);
+
+            if (!d1.length || !h1.length) return;
+
+            let pdh = d1.length >= 2 ? d1[d1.length - 2].high : d1[0].high;
+            let pdl = d1.length >= 2 ? d1[d1.length - 2].low : d1[0].low;
+            let asianSlice = h1.slice(-24, -16);
+            let ash = asianSlice.length > 0 ? Math.max(...asianSlice.map(c => c.high)) : pdh;
+            let asl = asianSlice.length > 0 ? Math.min(...asianSlice.map(c => c.low)) : pdl;
+
+            let recentH1 = h1.slice(-12);
+            let pdhSwept = recentH1.some(c => c.high > pdh);
+            let pdlSwept = recentH1.some(c => c.low < pdl);
+            let ashSwept = recentH1.some(c => c.high > ash);
+            let aslSwept = recentH1.some(c => c.low < asl);
+
+            document.getElementById('mapPDH').innerText = `$${pdh.toFixed(2)}`;
+            document.getElementById('statPDH').innerText = pdhSwept ? "SWEPT ⚡" : "UN-SWEPT (MAGNET)";
+            document.getElementById('statPDH').style.background = pdhSwept ? "rgba(246,70,93,0.2)" : "rgba(14,203,129,0.2)";
+            document.getElementById('statPDH').style.color = pdhSwept ? "#f6465d" : "#0ecb81";
+
+            document.getElementById('mapPDL').innerText = `$${pdl.toFixed(2)}`;
+            document.getElementById('statPDL').innerText = pdlSwept ? "SWEPT ⚡" : "UN-SWEPT (MAGNET)";
+            document.getElementById('statPDL').style.background = pdlSwept ? "rgba(246,70,93,0.2)" : "rgba(14,203,129,0.2)";
+            document.getElementById('statPDL').style.color = pdlSwept ? "#f6465d" : "#0ecb81";
+
+            document.getElementById('mapASH').innerText = `$${ash.toFixed(2)}`;
+            document.getElementById('statASH').innerText = ashSwept ? "SWEPT ⚡" : "UN-SWEPT (MAGNET)";
+            document.getElementById('statASH').style.background = ashSwept ? "rgba(246,70,93,0.2)" : "rgba(14,203,129,0.2)";
+            document.getElementById('statASH').style.color = ashSwept ? "#f6465d" : "#0ecb81";
+
+            document.getElementById('mapASL').innerText = `$${asl.toFixed(2)}`;
+            document.getElementById('statASL').innerText = aslSwept ? "SWEPT ⚡" : "UN-SWEPT (MAGNET)";
+            document.getElementById('statASL').style.background = aslSwept ? "rgba(246,70,93,0.2)" : "rgba(14,203,129,0.2)";
+            document.getElementById('statASL').style.color = aslSwept ? "#f6465d" : "#0ecb81";
         }
 
         async function runBacktestStep() {
@@ -277,7 +334,6 @@
 
             if (!candles15m.length) return;
 
-            // Pre-signal check: Extract 1D/4H important magnet labels
             let pdh = candles1D.length >= 2 ? candles1D[candles1D.length - 2].high : currentPrice * 1.01;
             let pdl = candles1D.length >= 2 ? candles1D[candles1D.length - 2].low : currentPrice * 0.99;
             
@@ -286,12 +342,11 @@
             let sLow = Math.min(...slice15m.map(c => c.low));
             let lastCandle = candles15m[candles15m.length - 1];
 
-            // Liquidity Sweep & Order Flow Confluence Check
             let isSweepLow = lastCandle.low < sLow && lastCandle.close > sLow;
             let isBuy = isSweepLow || (Math.random() > 0.4);
 
-            let slDist = currentPrice * 0.0018; // 0.18% Protected SL
-            let tpDist = currentPrice * 0.0072; // 1:4 R:R High Reward Expansion
+            let slDist = currentPrice * 0.0018; 
+            let tpDist = currentPrice * 0.0072; 
 
             let tradeSignal = {
                 asset: asset,
@@ -309,6 +364,7 @@
             document.getElementById('tradeStateBadge').innerText = "TRADE LOCKED & PROTECTED";
             saveMemory();
             monitorLivePrice();
+            updateLiquidityMapper();
         }
 
         async function monitorLivePrice() {
