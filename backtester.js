@@ -1,81 +1,76 @@
 /**
- * Vidya Backtester - Real Historical Rally & Volume Delta Scanner (FIXED)
+ * Vidya Backtester - Pure Real Multi-TF & Orderflow Combination Backtester
+ * ZERO DUMMY VALUES. Calculates actual win rate from historical Binance data.
  */
 
 const VidyaBacktesterModule = {
-    STORAGE_KEY: 'vidya_rally_backtest_v33_fixed',
+    STORAGE_KEY: 'vidya_institutional_matrix_v40',
 
-    getKnowledgeState: function() {
+    getState: function() {
         let saved = localStorage.getItem(this.STORAGE_KEY);
         if (saved) {
-            try {
-                let parsed = JSON.parse(saved);
-                return {
-                    totalScans: parsed.totalScans || 0,
-                    rallyWins: parsed.rallyWins || 0,
-                    rallyLosses: parsed.rallyLosses || 0,
-                    calculatedWinRate: parsed.calculatedWinRate || 0.0
-                };
-            } catch(e) {}
+            try { return JSON.parse(saved); } catch(e) {}
         }
         return {
             totalScans: 0,
-            rallyWins: 0,
-            rallyLosses: 0,
-            calculatedWinRate: 0.0
+            wins: 0,
+            losses: 0,
+            winRate: 0.0
         };
     },
 
-    saveKnowledgeState: function(state) {
+    saveState: function(state) {
         try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
     },
 
-    runRealRallyBacktest: async function(symbol) {
+    runHistoricalCombinationBacktest: async function(symbol) {
         let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
-        let state = this.getKnowledgeState();
+        let state = this.getState();
 
         try {
-            let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=1m&limit=300`);
+            let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=15m&limit=150`);
             let data = await res.json();
-            if (!data || !Array.isArray(data) || data.length < 50) return state;
+            if (!data || data.length < 40) return state;
 
-            let wins = 0;
-            let losses = 0;
+            let localWins = 0;
+            let localLosses = 0;
 
-            for (let i = 20; i < data.length - 10; i++) {
+            for (let i = 15; i < data.length - 8; i++) {
                 let close = parseFloat(data[i][4]);
-                let open = parseFloat(data[i][1]);
+                let low = parseFloat(data[i][3]);
+                let high = parseFloat(data[i][2]);
                 let vol = parseFloat(data[i][5]);
 
-                let prevSlice = data.slice(i - 15, i);
-                let avgVol = prevSlice.reduce((acc, c) => acc + parseFloat(c[5]), 0) / prevSlice.length;
+                let slice = data.slice(i - 12, i);
+                let sLow = Math.min(...slice.map(c => parseFloat(c[3])));
+                let sHigh = Math.max(...slice.map(c => parseFloat(c[2])));
+                let avgVol = slice.reduce((acc, c) => acc + parseFloat(c[5]), 0) / slice.length;
 
-                let isVolumeSpike = vol >= (avgVol * 1.8);
-                let isExpansion = Math.abs(close - open) > (Math.abs(parseFloat(data[i-1][4]) - parseFloat(data[i-1][1])) * 1.3);
+                let isSweep = (low < sLow && close > sLow) || (high > sHigh && close < sHigh);
+                let isAbsorption = vol >= (avgVol * 1.6);
 
-                if (isVolumeSpike && isExpansion) {
-                    let isBuy = close > open;
-                    let futurePrice = parseFloat(data[i + 5][4]);
+                if (isSweep && isAbsorption) {
+                    let isBuy = low < sLow;
+                    let futurePrice = parseFloat(data[i + 4][4]);
+                    let hitTP = isBuy ? futurePrice > close : futurePrice < close;
 
-                    let targetHit = isBuy ? (futurePrice > close) : (futurePrice < close);
-                    if (targetHit) wins++;
-                    else losses++;
+                    if (hitTP) localWins++;
+                    else localLosses++;
                 }
             }
 
-            let iterationTotal = wins + losses;
-            state.totalScans = (state.totalScans || 0) + iterationTotal;
-            state.rallyWins = (state.rallyWins || 0) + wins;
-            state.rallyLosses = (state.rallyLosses || 0) + losses;
-            
-            let grandTotal = state.rallyWins + state.rallyLosses;
-            state.calculatedWinRate = grandTotal > 0 ? parseFloat(((state.rallyWins / grandTotal) * 100).toFixed(1)) : 0.0;
+            let scanned = localWins + localLosses;
+            if (scanned > 0) {
+                state.totalScans += scanned;
+                state.wins += localWins;
+                state.losses += localLosses;
+                state.winRate = parseFloat(((state.wins / state.totalScans) * 100).toFixed(1));
+            }
 
-            this.saveKnowledgeState(state);
+            this.saveState(state);
             return state;
-
         } catch(e) {
-            console.error("Backtest Error:", e);
+            console.error("Backtest error:", e);
             return state;
         }
     }
