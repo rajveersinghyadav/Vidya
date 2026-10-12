@@ -1,100 +1,70 @@
 /**
- * Vidya Backtester Module - 6-Timeframe SMC Sweep & Magnet Engine
- * ZERO Dummy Values. Pure Binance Historical Data Analysis.
+ * Vidya Backtester Module - Pure Liquidity Sweep & Magnet Rally Backtest
  */
 
 const VidyaBacktesterModule = {
-    STORAGE_KEY: 'vidya_smc_backtest_v100',
+    STORAGE_KEY: 'vidya_sweep_backtest_v150',
 
     getState: function() {
         let saved = localStorage.getItem(this.STORAGE_KEY);
-        if (saved) {
-            try { return JSON.parse(saved); } catch(e) {}
-        }
+        if (saved) { try { return JSON.parse(saved); } catch(e) {} }
         return { totalScans: 0, wins: 0, losses: 0, winRate: 0.0 };
     },
 
     saveState: function(state) {
-        try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
     },
 
-    runHistoricalBacktest: async function(symbol) {
-        let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
+    runBacktest: async function(symbol) {
         let state = this.getState();
+        let klines = await VidyaStrategies.fetchKlines(symbol, '15m', 200);
+        if (!klines || klines.length < 50) return state;
 
-        try {
-            let [res1d, res1h, res15m] = await Promise.all([
-                fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=1d&limit=30`),
-                fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=1h&limit=100`),
-                fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=15m&limit=250`)
-            ]);
+        let wins = 0, losses = 0;
+        for (let i = 20; i < klines.length - 20; i++) {
+            let close = klines[i].close;
+            let high = klines[i].high;
+            let low = klines[i].low;
+            let vol = klines[i].volume;
 
-            let data1d = await res1d.json();
-            let data1h = await res1h.json();
-            let data15m = await res15m.json();
+            let slice = klines.slice(i - 20, i);
+            let sHigh = Math.max(...slice.map(c => c.high));
+            let sLow = Math.min(...slice.map(c => c.low));
+            let avgVol = slice.reduce((acc, c) => acc + c.volume, 0) / slice.length;
 
-            if (!data1d || !data1h || !data15m || data15m.length < 50) return state;
+            let isSweepLow = low < sLow && close > sLow;
+            let isSweepHigh = high > sHigh && close < sHigh;
+            let isVolSpike = vol >= (avgVol * 1.8);
 
-            let localWins = 0;
-            let localLosses = 0;
+            if ((isSweepLow || isSweepHigh) && isVolSpike) {
+                let isBuy = isSweepLow;
+                let targetTP = isBuy ? sHigh * 1.01 : sLow * 0.99;
+                let stopLoss = isBuy ? low * 0.998 : high * 1.002;
 
-            let pdh = parseFloat(data1d[data1d.length - 2][2]);
-            let pdl = parseFloat(data1d[data1d.length - 2][3]);
-
-            for (let i = 25; i < data15m.length - 20; i++) {
-                let close = parseFloat(data15m[i][4]);
-                let high = parseFloat(data15m[i][2]);
-                let low = parseFloat(data15m[i][3]);
-                let vol = parseFloat(data15m[i][5]);
-
-                let slice = data15m.slice(i - 20, i);
-                let swingHigh = Math.max(...slice.map(c => parseFloat(c[2])));
-                let swingLow = Math.min(...slice.map(c => parseFloat(c[3])));
-                let avgVol = slice.reduce((acc, c) => acc + parseFloat(c[5]), 0) / slice.length;
-
-                let isSweepLow = low < swingLow && close > swingLow;
-                let isSweepHigh = high > swingHigh && close < swingHigh;
-                let isVolumeSpike = vol >= (avgVol * 1.8);
-
-                if ((isSweepLow || isSweepHigh) && isVolumeSpike) {
-                    let isBuy = isSweepLow;
-                    let targetTP = isBuy ? Math.max(swingHigh, pdh) : Math.min(swingLow, pdl);
-                    let stopLoss = isBuy ? low * 0.9990 : high * 1.0010;
-
-                    let outcome = null;
-                    for (let j = i + 1; j <= Math.min(i + 35, data15m.length - 1); j++) {
-                        let fHigh = parseFloat(data15m[j][2]);
-                        let fLow = parseFloat(data15m[j][3]);
-
-                        if (isBuy) {
-                            if (fHigh >= targetTP) { outcome = 'WIN'; break; }
-                            if (fLow <= stopLoss) { outcome = 'LOSS'; break; }
-                        } else {
-                            if (fLow <= targetTP) { outcome = 'WIN'; break; }
-                            if (fHigh >= stopLoss) { outcome = 'LOSS'; break; }
-                        }
+                let hit = null;
+                for (let j = i + 1; j <= Math.min(i + 25, klines.length - 1); j++) {
+                    if (isBuy) {
+                        if (klines[j].high >= targetTP) { hit = 'WIN'; break; }
+                        if (klines[j].low <= stopLoss) { hit = 'LOSS'; break; }
+                    } else {
+                        if (klines[j].low <= targetTP) { hit = 'WIN'; break; }
+                        if (klines[j].high >= stopLoss) { hit = 'LOSS'; break; }
                     }
-
-                    if (outcome === 'WIN') localWins++;
-                    else if (outcome === 'LOSS') localLosses++;
                 }
+                if (hit === 'WIN') wins++;
+                else if (hit === 'LOSS') losses++;
             }
-
-            let validTotal = localWins + localLosses;
-            if (validTotal > 0) {
-                state.totalScans += validTotal;
-                state.wins += localWins;
-                state.losses += localLosses;
-                let grandTotal = state.wins + state.losses;
-                state.winRate = grandTotal > 0 ? parseFloat(((state.wins / grandTotal) * 100).toFixed(1)) : 0.0;
-            }
-
-            this.saveState(state);
-            return state;
-
-        } catch(e) {
-            console.error("Backtest Error:", e);
-            return state;
         }
+
+        let total = wins + losses;
+        if (total > 0) {
+            state.totalScans += total;
+            state.wins += wins;
+            state.losses += losses;
+            let grand = state.wins + state.losses;
+            state.winRate = grand > 0 ? parseFloat(((state.wins / grand) * 100).toFixed(1)) : 0.0;
+        }
+        this.saveState(state);
+        return state;
     }
 };
