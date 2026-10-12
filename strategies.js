@@ -1,6 +1,6 @@
 /**
- * Vidya Strategies - Multi-Timeframe Orderflow Delta & Absorption Engine
- * ZERO DUMMY VALUES. Uses real Binance multi-TF klines and volume metrics.
+ * Vidya Strategies - Magnet Level, Volume Delta & Orderflow Aggression Engine
+ * ZERO Dummy Data. Pure Binance Klines & Dynamic Liquidity Calculations.
  */
 
 const StrategyStrategies = {
@@ -10,21 +10,19 @@ const StrategyStrategies = {
             let res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${apiSymbol}`);
             let json = await res.json();
             return parseFloat(json.price);
-        } catch(e) {
-            return null;
-        }
+        } catch(e) { return null; }
     },
 
     fetchMultiTFData: async function(symbol) {
         let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
-        const timeframes = ['1d', '4h', '1h', '15m', '5m', '1m'];
-        let tfData = {};
+        const tfs = ['4h', '1h', '15m', '1m'];
+        let result = {};
         try {
-            for (let tf of timeframes) {
-                let limit = tf === '1m' ? 100 : tf === '5m' ? 60 : 30;
+            for (let tf of tfs) {
+                let limit = tf === '1m' ? 120 : 60;
                 let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=${tf}&limit=${limit}`);
                 let data = await res.json();
-                tfData[tf] = data.map(k => ({
+                result[tf] = data.map(k => ({
                     time: k[0],
                     open: parseFloat(k[1]),
                     high: parseFloat(k[2]),
@@ -33,30 +31,41 @@ const StrategyStrategies = {
                     volume: parseFloat(k[5])
                 }));
             }
-            return tfData;
-        } catch(e) {
-            return null;
-        }
+            return result;
+        } catch(e) { return null; }
     },
 
-    calculateOrderflowDeltaAndAbsorption: function(m1Candles) {
-        if (!m1Candles || m1Candles.length < 10) return { absorption: false, delta: 0 };
-        
-        let last = m1Candles[m1Candles.length - 1];
-        let range = last.high - last.low;
-        let body = Math.abs(last.close - last.open);
-        
-        let candleDelta = range > 0 ? ((last.close - last.open) / range) * last.volume : 0;
-        let avgVol = m1Candles.reduce((acc, c) => acc + c.volume, 0) / m1Candles.length;
-        
-        // Absorption: High volume + Small price body (Big player accumulating)
-        let isAbsorption = last.volume >= (avgVol * 1.8) && (body <= range * 0.35);
+    // Dynamic Magnet Level & Liquidity Pool Calculation
+    calculateMagnetLevelsAndDelta: function(tfData) {
+        if (!tfData || !tfData['1h'] || !tfData['1m']) return null;
+
+        let h1 = tfData['1h'];
+        let m1 = tfData['1m'];
+        let latestM1 = m1[m1.length - 1];
+
+        // 1. Magnet Price Levels (Highest Liquidity High/Low Zones)
+        let highs = h1.map(c => c.high);
+        let lows = h1.map(c => c.low);
+        let magnetHigh = Math.max(...highs);
+        let magnetLow = Math.min(...lows);
+
+        // 2. Real Volume Delta Aggression Calculation
+        let avgVol1m = m1.slice(-20).reduce((acc, c) => acc + c.volume, 0) / 20;
+        let deltaVolume = (latestM1.close - latestM1.open) * latestM1.volume;
+        let isVolumeAggressive = latestM1.volume >= (avgVol1m * 2.0);
+
+        // 3. Orderflow Absorption Check
+        let range = latestM1.high - latestM1.low;
+        let body = Math.abs(latestM1.close - latestM1.open);
+        let isAbsorption = isVolumeAggressive && (body <= (range * 0.4));
 
         return {
-            delta: candleDelta,
-            absorption: isAbsorption,
-            volume: last.volume,
-            price: last.close
+            price: latestM1.close,
+            magnetHigh: magnetHigh,
+            magnetLow: magnetLow,
+            deltaVolume: deltaVolume,
+            isAggressive: isVolumeAggressive,
+            isAbsorption: isAbsorption
         };
     }
 };
