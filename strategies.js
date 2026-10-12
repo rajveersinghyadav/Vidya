@@ -1,11 +1,9 @@
 /**
- * Vidya Strategies Module
- * Pure Binance Klines & Real Liquidity Level Extraction
- * NO FAKE/DUMMY VALUES.
+ * Vidya Strategies Module - Pure Binance Data & SMC Footprint Extractor
+ * ZERO Dummy / Fake Data. Pure 6-Timeframe Data Fetching.
  */
 
 const VidyaStrategies = {
-    // Live Price Fetcher
     fetchLivePrice: async function(symbol) {
         let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
         try {
@@ -15,14 +13,14 @@ const VidyaStrategies = {
         } catch(e) { return null; }
     },
 
-    // Multi-Timeframe Data Fetcher (1D, 1H, 15m, 1m)
-    fetchMultiTFData: async function(symbol) {
+    // Fetch 6 Timeframes Data from Binance
+    fetch6TFData: async function(symbol) {
         let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
-        const timeframes = ['1d', '1h', '15m', '1m'];
+        const timeframes = ['1d', '4h', '1h', '15m', '5m', '1m'];
         let result = {};
         try {
             for (let tf of timeframes) {
-                let limit = tf === '1m' ? 120 : 60;
+                let limit = (tf === '1m' || tf === '5m') ? 100 : 50;
                 let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=${tf}&limit=${limit}`);
                 let data = await res.json();
                 result[tf] = data.map(k => ({
@@ -38,18 +36,16 @@ const VidyaStrategies = {
         } catch(e) { return null; }
     },
 
-    // Dynamic Liquidity Labels Extractor (PDH, PDL, ASH, ASL)
-    extractLiquidityLabels: function(tfData) {
+    // Extract Liquidity Labels (PDH, PDL, ASH, ASL)
+    extractSMCLabels: function(tfData) {
         if (!tfData || !tfData['1d'] || !tfData['1h']) return null;
 
         let d1 = tfData['1d'];
         let h1 = tfData['1h'];
 
-        // Previous Day High & Low
         let pdh = d1.length >= 2 ? d1[d1.length - 2].high : d1[0].high;
         let pdl = d1.length >= 2 ? d1[d1.length - 2].low : d1[0].low;
 
-        // Asian Session High & Low (First 8 Hours of the Day in 1H data)
         let asianSlice = h1.slice(-24, -16);
         let ash = asianSlice.length > 0 ? Math.max(...asianSlice.map(c => c.high)) : Math.max(...h1.map(c => c.high));
         let asl = asianSlice.length > 0 ? Math.min(...asianSlice.map(c => c.low)) : Math.min(...h1.map(c => c.low));
@@ -57,21 +53,19 @@ const VidyaStrategies = {
         return { pdh, pdl, ash, asl };
     },
 
-    // Orderflow Volume Delta & Absorption Check
-    calculateOrderflowDelta: function(m1Candles) {
-        if (!m1Candles || m1Candles.length < 15) return { delta: 0, isAbsorption: false };
+    // Volume Delta & Institutional Absorption Calculation
+    checkOrderflowAbsorption: function(m1Candles) {
+        if (!m1Candles || m1Candles.length < 20) return { isSpike: false, isAbsorption: false };
 
         let last = m1Candles[m1Candles.length - 1];
-        let avgVol = m1Candles.slice(-15).reduce((acc, c) => acc + c.volume, 0) / 15;
+        let avgVol = m1Candles.slice(-20).reduce((acc, c) => acc + c.volume, 0) / 20;
 
         let range = last.high - last.low;
         let body = Math.abs(last.close - last.open);
 
         let isSpike = last.volume >= (avgVol * 1.8);
-        let isAbsorption = isSpike && (body <= range * 0.35); // Large volume, small candle body = Smart Money Absorption
+        let isAbsorption = isSpike && (range > 0 ? (body / range) <= 0.40 : false);
 
-        let delta = range > 0 ? ((last.close - last.open) / range) * last.volume : 0;
-
-        return { delta, isAbsorption, isSpike, currentPrice: last.close };
+        return { isSpike, isAbsorption, currentPrice: last.close, high: last.high, low: last.low };
     }
 };
