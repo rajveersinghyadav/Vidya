@@ -1,19 +1,14 @@
 /**
- * Vidya Strategies Module - Pure Binance Data & SMC Footprint Extractor
- * ZERO Dummy / Fake Data. Pure 6-Timeframe Data Fetching.
+ * Vidya Strategies Module - WebSockets, Orderflow Delta & Depth Matrix
+ * ZERO Dummy / Fake Data. Pure Binance Execution.
  */
 
 const VidyaStrategies = {
-    fetchLivePrice: async function(symbol) {
-        let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
-        try {
-            let res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${apiSymbol}`);
-            let json = await res.json();
-            return parseFloat(json.price);
-        } catch(e) { return null; }
-    },
+    wsConnection: null,
+    liveDepth: { bids: [], asks: [] },
+    liveTrades: [],
 
-    // Fetch 6 Timeframes Data from Binance
+    // Multi-Timeframe Data Fetcher (1D, 4H, 1H, 15m, 5m, 1m)
     fetch6TFData: async function(symbol) {
         let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
         const timeframes = ['1d', '4h', '1h', '15m', '5m', '1m'];
@@ -36,7 +31,7 @@ const VidyaStrategies = {
         } catch(e) { return null; }
     },
 
-    // Extract Liquidity Labels (PDH, PDL, ASH, ASL)
+    // Extract SMC Liquidity Labels (PDH, PDL, ASH, ASL)
     extractSMCLabels: function(tfData) {
         if (!tfData || !tfData['1d'] || !tfData['1h']) return null;
 
@@ -53,19 +48,67 @@ const VidyaStrategies = {
         return { pdh, pdl, ash, asl };
     },
 
-    // Volume Delta & Institutional Absorption Calculation
-    checkOrderflowAbsorption: function(m1Candles) {
-        if (!m1Candles || m1Candles.length < 20) return { isSpike: false, isAbsorption: false };
+    // Real-Time Binance WebSocket Connection
+    initWebSocketStream: function(symbol, onTradeCallback) {
+        let apiSymbol = symbol === 'XAUUSD' ? 'paxgusdt' : symbol.toLowerCase();
+        
+        if (this.wsConnection) {
+            this.wsConnection.close();
+        }
 
-        let last = m1Candles[m1Candles.length - 1];
-        let avgVol = m1Candles.slice(-20).reduce((acc, c) => acc + c.volume, 0) / 20;
+        let streamUrl = `wss://stream.binance.com:9443/ws/${apiSymbol}@depth10@100ms/${apiSymbol}@aggTrade`;
+        this.wsConnection = new WebSocket(streamUrl);
 
-        let range = last.high - last.low;
-        let body = Math.abs(last.close - last.open);
+        this.wsConnection.onmessage = (event) => {
+            let data = JSON.parse(event.data);
+            
+            if (data.bids && data.asks) {
+                this.liveDepth.bids = data.bids.map(b => ({ price: parseFloat(b[0]), qty: parseFloat(b[1]) }));
+                this.liveDepth.asks = data.asks.map(a => ({ price: parseFloat(a[0]), qty: parseFloat(a[1]) }));
+            }
 
-        let isSpike = last.volume >= (avgVol * 1.8);
-        let isAbsorption = isSpike && (range > 0 ? (body / range) <= 0.40 : false);
+            if (data.e === 'aggTrade') {
+                this.liveTrades.push({
+                    price: parseFloat(data.p),
+                    qty: parseFloat(data.q),
+                    isBuyerMaker: data.m,
+                    time: data.T
+                });
 
-        return { isSpike, isAbsorption, currentPrice: last.close, high: last.high, low: last.low };
+                if (this.liveTrades.length > 150) this.liveTrades.shift();
+                if (onTradeCallback) onTradeCallback(parseFloat(data.p));
+            }
+        };
+    },
+
+    // Calculate Delta Imbalance Ratio
+    calculateDeltaImbalance: function() {
+        if (this.liveTrades.length < 20) return { deltaRatio: 1.0, isBuyerAggressive: false, isSellerAggressive: false };
+
+        let buyerVolume = 0;
+        let sellerVolume = 0;
+
+        this.liveTrades.forEach(t => {
+            if (t.isBuyerMaker) sellerVolume += t.qty;
+            else buyerVolume += t.qty;
+        });
+
+        let deltaRatio = sellerVolume > 0 ? (buyerVolume / sellerVolume) : buyerVolume;
+
+        return {
+            deltaRatio: parseFloat(deltaRatio.toFixed(2)),
+            isBuyerAggressive: deltaRatio >= 2.2,
+            isSellerAggressive: deltaRatio <= 0.45
+        };
+    },
+
+    // Get Orderbook Heatmap Liquidity Walls
+    getHeatmapWalls: function() {
+        if (!this.liveDepth.bids.length || !this.liveDepth.asks.length) return null;
+
+        let buyWall = this.liveDepth.bids.reduce((max, b) => b.qty > max.qty ? b : max, this.liveDepth.bids[0]);
+        let sellWall = this.liveDepth.asks.reduce((max, a) => a.qty > max.qty ? a : max, this.liveDepth.asks[0]);
+
+        return { buyWall, sellWall };
     }
 };
