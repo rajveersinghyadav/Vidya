@@ -1,6 +1,6 @@
 /**
- * Vidya Strategies Module - Real Volume Delta Aggression & Rally Detector
- * ZERO Dummy Data. Uses actual Binance 1m & 15m volume and price velocity.
+ * Vidya Strategies - Multi-Timeframe Orderflow Delta & Absorption Engine
+ * ZERO DUMMY VALUES. Uses real Binance multi-TF klines and volume metrics.
  */
 
 const StrategyStrategies = {
@@ -15,16 +15,16 @@ const StrategyStrategies = {
         }
     },
 
-    fetchMultiTFKlines: async function(symbol) {
+    fetchMultiTFData: async function(symbol) {
         let apiSymbol = symbol === 'XAUUSD' ? 'PAXGUSDT' : symbol;
-        const intervals = ['1h', '15m', '1m'];
-        let multiData = {};
+        const timeframes = ['1d', '4h', '1h', '15m', '5m', '1m'];
+        let tfData = {};
         try {
-            for (let tf of intervals) {
-                let limit = tf === '1m' ? 100 : 50; // More depth for 1m continuous rally tracking
+            for (let tf of timeframes) {
+                let limit = tf === '1m' ? 100 : tf === '5m' ? 60 : 30;
                 let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${apiSymbol}&interval=${tf}&limit=${limit}`);
                 let data = await res.json();
-                multiData[tf] = data.map(k => ({
+                tfData[tf] = data.map(k => ({
                     time: k[0],
                     open: parseFloat(k[1]),
                     high: parseFloat(k[2]),
@@ -33,62 +33,30 @@ const StrategyStrategies = {
                     volume: parseFloat(k[5])
                 }));
             }
-            return multiData;
-        } catch(e) { return null; }
+            return tfData;
+        } catch(e) {
+            return null;
+        }
     },
 
-    // Calculate Real Volume Delta & Continuous Rally (Capturing 200 to 1000+ pips moves)
-    detectMassiveRallyAndDelta: function(tfData) {
-        if (!tfData || !tfData['1m']) return { triggered: false };
-        let m1 = tfData['1m'];
-        if (m1.length < 20) return { triggered: false };
-
-        let lastCandles = m1.slice(-10); // Last 10 candles for velocity check
-        let avgVolume = m1.reduce((acc, c) => acc + c.volume, 0) / m1.length;
-
-        // Check for aggressive volume spike (Smart money injection)
-        let latestCandle = m1[m1.length - 1];
-        let isVolumeAggressive = latestCandle.volume >= (avgVolume * 2.2); // 2.2x volume surge
-
-        // Count consecutive same-color expansion candles (Continuous Rally like screenshots)
-        let consecutiveGreen = 0;
-        let consecutiveRed = 0;
-
-        for (let i = lastCandles.length - 1; i >= 0; i--) {
-            if (lastCandles[i].close > lastCandles[i].open) consecutiveGreen++;
-            else break;
-        }
-
-        for (let i = lastCandles.length - 1; i >= 0; i--) {
-            if (lastCandles[i].close < lastCandles[i].open) consecutiveRed++;
-            else break;
-        }
-
-        let isBullishRally = consecutiveGreen >= 4 && isVolumeAggressive;
-        let isBearishRally = consecutiveRed >= 4 && isVolumeAggressive;
-
-        if (!isBullishRally && !isBearishRally) return { triggered: false };
-
-        let direction = isBullishRally ? 'BUY' : 'SELL';
-        let entryPrice = latestCandle.close;
+    calculateOrderflowDeltaAndAbsorption: function(m1Candles) {
+        if (!m1Candles || m1Candles.length < 10) return { absorption: false, delta: 0 };
         
-        // Massive TP calculation for 1:5 to 1:20 R:R (Catching long unbroken rallies)
-        let atrEstimate = Math.abs(latestCandle.high - latestCandle.low) * 4;
-        let targetTP = direction === 'BUY' ? entryPrice + (atrEstimate * 6) : entryPrice - (atrEstimate * 6);
-        let stopLoss = direction === 'BUY' ? latestCandle.low - (atrEstimate * 0.8) : latestCandle.high + (atrEstimate * 0.8);
-
-        let risk = Math.abs(entryPrice - stopLoss);
-        let reward = Math.abs(targetTP - entryPrice);
-        let calculatedRR = risk > 0 ? (reward / risk).toFixed(1) : "5.0";
+        let last = m1Candles[m1Candles.length - 1];
+        let range = last.high - last.low;
+        let body = Math.abs(last.close - last.open);
+        
+        let candleDelta = range > 0 ? ((last.close - last.open) / range) * last.volume : 0;
+        let avgVol = m1Candles.reduce((acc, c) => acc + c.volume, 0) / m1Candles.length;
+        
+        // Absorption: High volume + Small price body (Big player accumulating)
+        let isAbsorption = last.volume >= (avgVol * 1.8) && (body <= range * 0.35);
 
         return {
-            triggered: true,
-            direction: direction,
-            entry: entryPrice,
-            tp: targetTP,
-            sl: stopLoss,
-            rr: `1:${calculatedRR}`,
-            volumeSpike: latestCandle.volume.toFixed(2)
+            delta: candleDelta,
+            absorption: isAbsorption,
+            volume: last.volume,
+            price: last.close
         };
     }
 };
