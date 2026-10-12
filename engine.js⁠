@@ -1,28 +1,36 @@
 /**
- * Vidya Engine Module - Institutional Session & Orderflow Validation
+ * Vidya Engine - Top-Down Bias, Session Sweeps & Big Player Reversals
  */
 
 const VidyaEngineModule = {
-    validateInstitutionalConfluence: function(rallyData) {
-        if (!rallyData.triggered) return { valid: false };
+    getHTFBias: function(tfData) {
+        if (!tfData || !tfData['1d'] || !tfData['4h']) return "NEUTRAL";
+        let d1 = tfData['1d'];
+        let h4 = tfData['4h'];
+        
+        let d1Trend = d1[d1.length - 1].close > d1[d1.length - 5].close ? "BULLISH" : "BEARISH";
+        let h4Trend = h4[h4.length - 1].close > h4[h4.length - 5].close ? "BULLISH" : "BEARISH";
 
-        let currentHour = new Date().getUTCHours();
-        let sessionName = "ASIAN RANGE";
-        let sessionMultiplier = 1.0;
+        return d1Trend === h4Trend ? d1Trend : "CONSOLIDATION";
+    },
 
-        // London Killzone & New York Killzone high-probability filters
-        if (currentHour >= 7 && currentHour <= 10) {
-            sessionName = "LONDON KILLZONE";
-            sessionMultiplier = 1.2;
-        } else if (currentHour >= 13 && currentHour <= 16) {
-            sessionName = "NEW YORK KILLZONE";
-            sessionMultiplier = 1.5;
-        }
+    detectSessionSweep: function(tfData) {
+        if (!tfData || !tfData['15m']) return { swept: false };
+        let m15 = tfData['15m'];
+        let last = m15[m15.length - 1];
+        let prevRange = m15.slice(-20, -1);
+
+        let swingHigh = Math.max(...prevRange.map(c => c.high));
+        let swingLow = Math.min(...prevRange.map(c => c.low));
+
+        let bullishSweep = last.low < swingLow && last.close > swingLow;
+        let bearishSweep = last.high > swingHigh && last.close < swingHigh;
 
         return {
-            valid: true,
-            session: sessionName,
-            confluenceScore: (parseFloat(rallyData.rr.split(':')[1]) * sessionMultiplier).toFixed(1)
+            swept: bullishSweep || bearishSweep,
+            direction: bullishSweep ? 'BUY' : bearishSweep ? 'SELL' : 'NONE',
+            swingHigh,
+            swingLow
         };
     }
 };
