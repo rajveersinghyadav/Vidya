@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidya - Institutional Modular Terminal</title>
+    <title>Vidya - Real Institutional Terminal</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0e11; color: #d1d4dc; margin: 0; padding: 12px; }
         h1 { font-size: 18px; color: #f0b90b; margin-bottom: 2px; }
@@ -22,8 +22,6 @@
         .metric-row span { color: #fff; font-weight: bold; }
         .badge-buy { background: rgba(14,203,129,0.2); color: #0ecb81; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
         .badge-sell { background: rgba(246,70,93,0.2); color: #f6465d; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
-        .badge-tp { background: rgba(14, 203, 129, 0.2); color: #0ecb81; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
-        .badge-sl { background: rgba(246, 70, 93, 0.2); color: #f6465d; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
 
         table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
         th, td { border: 1px solid #21262d; padding: 6px; text-align: center; }
@@ -32,19 +30,19 @@
 </head>
 <body>
 
-    <h1>Vidya - Institutional Modular Terminal</h1>
-    <div class="subtitle">Multi-TF Engine + Real Market Execution + Persistent Self-Learning Weights</div>
+    <h1>Vidya - Real Institutional Terminal</h1>
+    <div class="subtitle">Pure Historical Backtest Engine + Live Accuracy-Filtered Signals</div>
 
     <!-- CONTROLS -->
     <div class="controls">
-        <button id="scanAllBtn" class="btn-green" onclick="toggleMultiScanner()">▶ Start Multi-Asset Live Scan</button>
-        <button id="backtestBtn" class="btn-blue" onclick="toggleSelfLearningBacktest()">▶ Run Self-Learning Backtest</button>
+        <button id="scanAllBtn" class="btn-green" onclick="toggleMultiScanner()">▶ Start Live Rally Scan</button>
+        <button id="backtestBtn" class="btn-blue" onclick="toggleRealBacktest()">▶ Run Real Historical Backtest</button>
     </div>
 
     <!-- ALL 4 ASSETS LIVE BOARD -->
     <div class="card" style="border-color: #0ecb81;">
         <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 8px; display: flex; justify-content: space-between;">
-            <span>⚡ ALL 4 ASSETS REAL-TIME BOARD (BTC, ETH, SOL, GOLD)</span>
+            <span>⚡ REAL-TIME RALLY BOARD (BTC, ETH, SOL, GOLD)</span>
             <span id="globalState" style="color: #0ecb81;">READY</span>
         </div>
         <div class="grid-4" id="multiAssetBoard">
@@ -55,44 +53,17 @@
         </div>
     </div>
 
-    <!-- REAL MARKET EXECUTED TRADE HISTORY -->
+    <!-- BACKTEST REAL ACCURACY BOARD -->
     <div class="card">
-        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px; display: flex; justify-content: space-between;">
-            <span>📊 REAL MARKET EXECUTED TRADE HISTORY & PnL</span>
-            <span style="font-size: 10px; color: #0ecb81;" id="walletSummary">Win Ratio: 0% | PnL: +0.0 R</span>
-        </div>
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Asset & Session</th>
-                        <th>Type</th>
-                        <th>Entry</th>
-                        <th>Target TP</th>
-                        <th>Stop Loss</th>
-                        <th>Actual Outcome</th>
-                    </tr>
-                </thead>
-                <tbody id="historyTableBody">
-                    <tr><td colspan="6" style="color: #848e9c;">No trades closed in real market yet. Waiting for TP/SL hit...</td></tr>
-                </tbody>
-            </table>
-        </div>
+        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px;">🧠 REAL HISTORICAL BACKTEST ACCURACY</div>
+        <div class="metric-row">Total Historical Scans Run: <span id="btTotalScans">0</span></div>
+        <div class="metric-row">Calculated Real Accuracy: <span id="btAccuracy" style="color:#0ecb81;">0.0%</span></div>
+        <div class="metric-row">Historical Rally Wins: <span id="btWins" style="color:#0ecb81;">0</span></div>
+        <div class="metric-row">Historical Rally Losses: <span id="btLosses" style="color:#f6465d;">0</span></div>
     </div>
 
-    <!-- SELF-LEARNING BACKTESTING SYSTEM MEMORY BOARD -->
-    <div class="card" style="opacity: 0.95;">
-        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px;">🧠 SELF-LEARNING STRATEGY WEIGHTS (Persistent Memory)</div>
-        <div class="metric-row">Total Historical Scans Run: <span id="btRuns">6420</span></div>
-        <div class="metric-row">Sweep Confluence Weight: <span id="btSweepScore" style="color:#0ecb81;">96.0%</span></div>
-        <div class="metric-row">Orderflow Delta Weight: <span id="btDeltaScore" style="color:#0ecb81;">93.0%</span></div>
-        <div class="metric-row">Magnet Zone FVG Weight: <span id="btMagnetScore" style="color:#0ecb81;">98.0%</span></div>
-        <div class="metric-row">Pullback Rally Scale Weight: <span id="btRallyScore" style="color:#0ecb81;">91.0%</span></div>
-        
-        <button class="btn-purple" onclick="runManualCalibration()">🔬 Force Calibrate Strategy Weights</button>
-    </div>
-
-    <!-- IMPORT MODULAR SCRIPTS -->
+    <!-- SCRIPTS -->
+    <script src="strategies.js"></script>
     <script src="engine.js"></script>
     <script src="backtester.js"></script>
     <script>
@@ -100,226 +71,93 @@
         let isBacktesting = false;
         let scanInterval = null;
         let btInterval = null;
-
         const assetList = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XAUUSD'];
-        const TERMINAL_STORAGE_KEY = 'vidya_modular_terminal_v27';
-
-        let terminalMemory = {
-            activeTrades: {},
-            historyLog: [],
-            totalPnLR: 0,
-            winsCount: 0,
-            lossesCount: 0
-        };
-
-        function saveTerminalMemory() {
-            try { localStorage.setItem(TERMINAL_STORAGE_KEY, JSON.stringify(terminalMemory)); } catch(e){}
-        }
-
-        function loadTerminalMemory() {
-            try {
-                let saved = localStorage.getItem(TERMINAL_STORAGE_KEY);
-                if (saved) {
-                    terminalMemory = { ...terminalMemory, ...JSON.parse(saved) };
-                }
-            } catch(e){}
-            updateWeightsUI();
-            renderHistoryUI();
-            if (Object.keys(terminalMemory.activeTrades).length > 0) {
-                renderBoard(terminalMemory.activeTrades);
-            }
-        }
 
         window.onload = function() {
-            loadTerminalMemory();
+            updateUI();
         };
 
-        function updateWeightsUI() {
-            let knowledge = VidyaBacktester.getKnowledge();
-            document.getElementById('btRuns').innerText = knowledge.totalRuns;
-            document.getElementById('btSweepScore').innerText = (knowledge.weights.liquiditySweep * 100).toFixed(1) + "%";
-            document.getElementById('btDeltaScore').innerText = (knowledge.weights.orderflowDelta * 100).toFixed(1) + "%";
-            document.getElementById('btMagnetScore').innerText = (knowledge.weights.magnetFVG * 100).toFixed(1) + "%";
-            document.getElementById('btRallyScore').innerText = (knowledge.weights.pullbackRally * 100).toFixed(1) + "%";
+        function updateUI() {
+            let state = VidyaBacktesterModule.getKnowledgeState();
+            document.getElementById('btTotalScans').innerText = state.totalScans;
+            document.getElementById('btAccuracy').innerText = state.calculatedWinRate.toFixed(1) + "%";
+            document.getElementById('btWins').innerText = state.rallyWins;
+            document.getElementById('btLosses').innerText = state.rallyLosses;
+        }
+
+        async function toggleRealBacktest() {
+            isBacktesting = !isBacktesting;
+            let btn = document.getElementById('backtestBtn');
+            if (isBacktesting) {
+                btn.innerText = "⏸ Pause Backtest";
+                btn.className = "btn-red";
+                
+                btInterval = setInterval(async () => {
+                    for (let symbol of assetList) {
+                        await VidyaBacktesterModule.runRealRallyBacktest(symbol);
+                        updateUI();
+                    }
+                }, 2000);
+            } else {
+                btn.innerText = "▶ Run Real Historical Backtest";
+                btn.className = "btn-blue";
+                clearInterval(btInterval);
+            }
         }
 
         function toggleMultiScanner() {
             isScanning = !isScanning;
             let btn = document.getElementById('scanAllBtn');
             if (isScanning) {
-                btn.innerText = "⏸ Pause Live Scan & Execution";
+                btn.innerText = "⏸ Pause Live Scan";
                 btn.className = "btn-red";
-                runModularMultiScan();
-                scanInterval = setInterval(runModularMultiScan, 6000);
+                runLiveRallyScan();
+                scanInterval = setInterval(runLiveRallyScan, 5000);
             } else {
-                btn.innerText = "▶ Start Multi-Asset Live Scan";
+                btn.innerText = "▶ Start Live Rally Scan";
                 btn.className = "btn-green";
                 clearInterval(scanInterval);
             }
         }
 
-        async function runModularMultiScan() {
+        async function runLiveRallyScan() {
             let stateBadge = document.getElementById('globalState');
-            if(stateBadge) stateBadge.innerText = "SCANNING MULTI-TF & SESSIONS...";
-            let results = { ...terminalMemory.activeTrades };
-            let currentHour = new Date().getUTCHours();
-            let sessionInfo = VidyaBacktester.evaluateSessionReaction(currentHour);
+            if(stateBadge) stateBadge.innerText = "SCANNING LIVE VOLUME RALLIES...";
+            let container = document.getElementById('multiAssetBoard');
+            let html = '';
 
             for (let symbol of assetList) {
-                let livePrice = await VidyaEngine.fetchLivePrice(symbol);
-                if (!livePrice) continue;
+                let livePrice = await StrategyStrategies.fetchLivePrice(symbol);
+                let tfData = await StrategyStrategies.fetchMultiTFKlines(symbol);
+                
+                if (tfData) {
+                    let rallyResult = StrategyStrategies.detectMassiveRallyAndDelta(tfData);
+                    let validation = VidyaEngineModule.validateInstitutionalConfluence(rallyResult);
 
-                // Check active trade for real market TP/SL hit
-                if (results[symbol] && results[symbol].locked) {
-                    let t = results[symbol];
-                    let hitTP = t.type === 'BUY' ? livePrice >= t.tp : livePrice <= t.tp;
-                    let hitSL = t.type === 'BUY' ? livePrice <= t.sl : livePrice >= t.sl;
-
-                    if (hitTP) {
-                        logClosedTrade(symbol, t, 'TP HIT 🎯', true);
-                        delete results[symbol];
-                    } else if (hitSL) {
-                        logClosedTrade(symbol, t, 'SL HIT ❌', false);
-                        delete results[symbol];
-                    } else {
-                        t.currentPrice = livePrice;
-                    }
-                    continue;
-                }
-
-                // Fetch Multi-TF data for new setup
-                let tfData = await VidyaEngine.fetchMultiTFKlines(symbol);
-                if (!tfData) continue;
-
-                let sweepCheck = VidyaEngine.detectLiquiditySweepAndDelta(tfData);
-                if (sweepCheck.swept) {
-                    let targetTP = VidyaEngine.calculateMagnetTP(tfData, sweepCheck.direction);
-                    let slPrice = sweepCheck.direction === 'BUY' ? sweepCheck.swingLow * 0.998 : sweepCheck.swingHigh * 1.002;
-                    
-                    let risk = Math.abs(sweepCheck.pinpointEntry - slPrice);
-                    let reward = Math.abs(targetTP - sweepCheck.pinpointEntry);
-                    let rr = risk > 0 ? (reward / risk).toFixed(1) : "4.5";
-
-                    results[symbol] = {
-                        symbol: symbol,
-                        type: sweepCheck.direction,
-                        entry: sweepCheck.pinpointEntry,
-                        currentPrice: livePrice,
-                        tp: targetTP,
-                        sl: slPrice,
-                        rr: `1:${rr}`,
-                        session: sessionInfo.session,
-                        locked: true
-                    };
-                }
-            }
-
-            terminalMemory.activeTrades = results;
-            saveTerminalMemory();
-            if(stateBadge) stateBadge.innerText = "LIVE & PROTECTED";
-            renderBoard(results);
-        }
-
-        function logClosedTrade(symbol, t, outcome, isWin) {
-            let rVal = t.rr.split(':')[1] || '4.0';
-            let closed = { ...t, outcome, rVal: isWin ? `+${rVal} R` : '-1.0 R', closedAt: new Date().toLocaleTimeString() };
-            
-            if (isWin) {
-                terminalMemory.totalPnLR += parseFloat(rVal) || 4;
-                terminalMemory.winsCount++;
-            } else {
-                terminalMemory.totalPnLR -= 1.0;
-                terminalMemory.lossesCount++;
-            }
-
-            terminalMemory.historyLog.unshift(closed);
-            saveTerminalMemory();
-            renderHistoryUI();
-        }
-
-        function renderBoard(data) {
-            let container = document.getElementById('multiAssetBoard');
-            if (!container) return;
-            let html = '';
-
-            assetList.forEach(symbol => {
-                let d = data[symbol];
-                if (d) {
-                    let isBuy = d.type === 'BUY';
-                    html += `
-                        <div class="asset-card" style="border: 1px solid ${isBuy ? '#0ecb81' : '#f6465d'};">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <b>${symbol}</b>
-                                <span class="${isBuy ? 'badge-buy' : 'badge-sell'}">${d.type} (${d.rr})</span>
+                    if (rallyResult.triggered && validation.valid) {
+                        let isBuy = rallyResult.direction === 'BUY';
+                        html += `
+                            <div class="asset-card" style="border: 1px solid ${isBuy ? '#0ecb81' : '#f6465d'};">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <b>${symbol}</b>
+                                    <span class="${isBuy ? 'badge-buy' : 'badge-sell'}">${rallyResult.direction} (${rallyResult.rr})</span>
+                                </div>
+                                <div class="metric-row">Live Price: <span style="color:#f0b90b;">$${livePrice ? livePrice.toFixed(2) : rallyResult.entry.toFixed(2)}</span></div>
+                                <div class="metric-row">Entry Price: <span>$${rallyResult.entry.toFixed(2)}</span></div>
+                                <div class="metric-row">Target TP: <span style="color:#0ecb81;">$${rallyResult.tp.toFixed(2)}</span></div>
+                                <div class="metric-row">Stop Loss: <span style="color:#f6465d;">$${rallyResult.sl.toFixed(2)}</span></div>
+                                <div style="font-size:9px; color:#848e9c; margin-top:4px;">• Session: ${validation.session} | Vol Spike: ${rallyResult.volumeSpike}</div>
                             </div>
-                            <div class="metric-row">Live Price: <span style="color:#f0b90b;">$${d.currentPrice ? d.currentPrice.toFixed(2) : d.entry.toFixed(2)}</span></div>
-                            <div class="metric-row">Pinpoint Entry: <span>$${d.entry.toFixed(2)}</span></div>
-                            <div class="metric-row">Magnet TP: <span style="color:#0ecb81;">$${d.tp.toFixed(2)}</span></div>
-                            <div class="metric-row">Tight SL: <span style="color:#f6465d;">$${d.sl.toFixed(2)}</span></div>
-                            <div style="font-size:9px; color:#848e9c; margin-top:4px;">• Session: ${d.session}</div>
-                        </div>
-                    `;
-                } else {
-                    html += `<div class="asset-card"><b>${symbol}</b><br><span style="color:#848e9c; font-size:10px;">Scanning multi-TF sweeps...</span></div>`;
+                        `;
+                        continue;
+                    }
                 }
-            });
+
+                html += `<div class="asset-card"><b>${symbol}</b><br><span style="color:#848e9c; font-size:10px;">Scanning 1m volume delta rallies...</span></div>`;
+            }
+
             container.innerHTML = html;
-        }
-
-        function renderHistoryUI() {
-            let totalTrades = terminalMemory.winsCount + terminalMemory.lossesCount;
-            let winRatioPct = totalTrades > 0 ? ((terminalMemory.winsCount / totalTrades) * 100).toFixed(1) : "0.0";
-
-            let summary = document.getElementById('walletSummary');
-            if (summary) {
-                summary.innerText = `Win Ratio: ${winRatioPct}% (Wins: ${terminalMemory.winsCount} | Losses: ${terminalMemory.lossesCount}) | PnL: ${terminalMemory.totalPnLR >= 0 ? '+' : ''}${terminalMemory.totalPnLR.toFixed(1)} R`;
-            }
-            
-            let tbody = document.getElementById('historyTableBody');
-            if (!tbody) return;
-            
-            if (!terminalMemory.historyLog || terminalMemory.historyLog.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="color: #848e9c;">No trades closed in real market yet. Waiting for TP/SL hit...</td></tr>`;
-                return;
-            }
-
-            let html = '';
-            terminalMemory.historyLog.forEach(t => {
-                html += `
-                    <tr>
-                        <td><b>${t.symbol}</b><br><span style="color:#848e9c; font-size:9px;">${t.session}</span></td>
-                        <td style="color:#0ecb81;">${t.type}</td>
-                        <td>$${t.entry.toFixed(2)}</td>
-                        <td style="color:#0ecb81; font-weight:bold;">$${t.tp.toFixed(2)}</td>
-                        <td style="color:#f6465d; font-weight:bold;">$${t.sl.toFixed(2)}</td>
-                        <td><span class="badge ${t.outcome.includes('TP') ? 'badge-tp' : 'badge-sl'}">${t.outcome} (${t.rVal})</span></td>
-                    </tr>
-                `;
-            });
-            tbody.innerHTML = html;
-        }
-
-        function toggleSelfLearningBacktest() {
-            isBacktesting = !isBacktesting;
-            let btn = document.getElementById('backtestBtn');
-            if (isBacktesting) {
-                btn.innerText = "⏸ Pause Backtest";
-                btn.className = "btn-red";
-                btInterval = setInterval(() => {
-                    VidyaBacktester.runHistoricalScan();
-                    updateWeightsUI();
-                }, 600);
-            } else {
-                btn.innerText = "▶ Run Self-Learning Backtest";
-                btn.className = "btn-blue";
-                clearInterval(btInterval);
-            }
-        }
-
-        function runManualCalibration() {
-            VidyaBacktester.runHistoricalScan();
-            updateWeightsUI();
-            alert("Institutional Strategy Weights successfully re-calibrated and saved to persistent memory!");
+            if(stateBadge) stateBadge.innerText = "MONITORING MARKET";
         }
     </script>
 </body>
