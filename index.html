@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidya - Real Institutional Terminal</title>
+    <title>Vidya - Institutional Orderflow & Delta Terminal</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0e11; color: #d1d4dc; margin: 0; padding: 12px; }
         h1 { font-size: 18px; color: #f0b90b; margin-bottom: 2px; }
@@ -16,7 +16,6 @@
         .btn-green { background-color: #0ecb81; color: #000; }
         .btn-blue { background-color: #2b6cb0; color: #fff; }
         .btn-red { background-color: #f6465d; color: #fff; }
-        
         .metric-row { display: flex; justify-content: space-between; font-size: 11px; padding: 5px 0; border-bottom: 1px solid #21262d; }
         .metric-row span { color: #fff; font-weight: bold; }
         .badge-buy { background: rgba(14,203,129,0.2); color: #0ecb81; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
@@ -25,39 +24,36 @@
 </head>
 <body>
 
-    <h1>Vidya - Real Institutional Terminal</h1>
-    <div class="subtitle">Pure Historical Backtest Engine + Live Accuracy-Filtered Signals</div>
+    <h1>Vidya - Institutional Orderflow & Delta Terminal</h1>
+    <div class="subtitle">Multi-Timeframe Top-Down + Orderflow Absorption + Real Calculated Accuracy</div>
 
-    <!-- CONTROLS -->
     <div class="controls">
-        <button id="scanAllBtn" class="btn-green" onclick="toggleMultiScanner()">▶ Start Live Rally Scan</button>
-        <button id="backtestBtn" class="btn-blue" onclick="toggleRealBacktest()">▶ Run Real Historical Backtest</button>
+        <button id="scanAllBtn" class="btn-green" onclick="toggleLiveScan()">▶ Start Institutional Live Scan</button>
+        <button id="backtestBtn" class="btn-blue" onclick="toggleBacktest()">▶ Run Real Combination Backtest</button>
     </div>
 
-    <!-- ALL 4 ASSETS LIVE BOARD -->
     <div class="card" style="border-color: #0ecb81;">
         <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 8px; display: flex; justify-content: space-between;">
-            <span>⚡ REAL-TIME RALLY BOARD (BTC, ETH, SOL, GOLD)</span>
+            <span>⚡ LIVE ASSET BOARD (BTC, ETH, SOL, GOLD)</span>
             <span id="globalState" style="color: #0ecb81;">READY</span>
         </div>
         <div class="grid-4" id="multiAssetBoard">
-            <div class="asset-card"><b>BTC/USDT</b><br><span style="color:#848e9c; font-size:10px;">Click Scan to start...</span></div>
-            <div class="asset-card"><b>ETH/USDT</b><br><span style="color:#848e9c; font-size:10px;">Click Scan to start...</span></div>
-            <div class="asset-card"><b>SOL/USDT</b><br><span style="color:#848e9c; font-size:10px;">Click Scan to start...</span></div>
-            <div class="asset-card"><b>XAU/USD (Gold)</b><br><span style="color:#848e9c; font-size:10px;">Click Scan to start...</span></div>
+            <div class="asset-card"><b>BTC/USDT</b><br><span style="color:#848e9c; font-size:10px;">Waiting for scan...</span></div>
+            <div class="asset-card"><b>ETH/USDT</b><br><span style="color:#848e9c; font-size:10px;">Waiting for scan...</span></div>
+            <div class="asset-card"><b>SOL/USDT</b><br><span style="color:#848e9c; font-size:10px;">Waiting for scan...</span></div>
+            <div class="asset-card"><b>XAU/USD (Gold)</b><br><span style="color:#848e9c; font-size:10px;">Waiting for scan...</span></div>
         </div>
     </div>
 
-    <!-- BACKTEST REAL ACCURACY BOARD -->
     <div class="card">
-        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px;">🧠 REAL HISTORICAL BACKTEST ACCURACY</div>
-        <div class="metric-row">Total Historical Scans Run: <span id="btTotalScans">0</span></div>
-        <div class="metric-row">Calculated Real Accuracy: <span id="btAccuracy" style="color:#0ecb81;">0.0%</span></div>
-        <div class="metric-row">Historical Rally Wins: <span id="btWins" style="color:#0ecb81;">0</span></div>
-        <div class="metric-row">Historical Rally Losses: <span id="btLosses" style="color:#f6465d;">0</span></div>
+        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px;">🧠 REAL BACKTESTED COMBINATION KNOWLEDGE</div>
+        <div class="metric-row">Total Historical Scans: <span id="btScans">0</span></div>
+        <div class="metric-row">Calculated Real Win Rate: <span id="btWinRate" style="color:#0ecb81;">0.0%</span></div>
+        <div class="metric-row">Historical Wins: <span id="btWins" style="color:#0ecb81;">0</span></div>
+        <div class="metric-row">Historical Losses: <span id="btLosses" style="color:#f6465d;">0</span></div>
     </div>
 
-    <!-- SCRIPTS -->
+    <script src="knowledge.json" type="application/json" id="knowledgeData"></script>
     <script src="strategies.js"></script>
     <script src="engine.js"></script>
     <script src="backtester.js"></script>
@@ -68,92 +64,89 @@
         let btInterval = null;
         const assetList = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XAUUSD'];
 
-        window.onload = function() {
-            updateUI();
-        };
+        window.onload = function() { updateUI(); };
 
         function updateUI() {
             if (typeof VidyaBacktesterModule === 'undefined') return;
-            let state = VidyaBacktesterModule.getKnowledgeState();
-            document.getElementById('btTotalScans').innerText = state.totalScans || 0;
-            document.getElementById('btAccuracy').innerText = (state.calculatedWinRate || 0).toFixed(1) + "%";
-            document.getElementById('btWins').innerText = state.rallyWins || 0;
-            document.getElementById('btLosses').innerText = state.rallyLosses || 0;
+            let state = VidyaBacktesterModule.getState();
+            document.getElementById('btScans').innerText = state.totalScans || 0;
+            document.getElementById('btWinRate').innerText = (state.winRate || 0).toFixed(1) + "%";
+            document.getElementById('btWins').innerText = state.wins || 0;
+            document.getElementById('btLosses').innerText = state.losses || 0;
         }
 
-        async function toggleRealBacktest() {
+        async function toggleBacktest() {
             isBacktesting = !isBacktesting;
             let btn = document.getElementById('backtestBtn');
             if (isBacktesting) {
                 btn.innerText = "⏸ Pause Backtest";
                 btn.className = "btn-red";
-                
                 btInterval = setInterval(async () => {
-                    for (let symbol of assetList) {
-                        await VidyaBacktesterModule.runRealRallyBacktest(symbol);
+                    for (let sym of assetList) {
+                        await VidyaBacktesterModule.runHistoricalCombinationBacktest(sym);
                         updateUI();
                     }
-                }, 1500);
+                }, 2000);
             } else {
-                btn.innerText = "▶ Run Real Historical Backtest";
+                btn.innerText = "▶ Run Real Combination Backtest";
                 btn.className = "btn-blue";
                 clearInterval(btInterval);
             }
         }
 
-        function toggleMultiScanner() {
+        function toggleLiveScan() {
             isScanning = !isScanning;
             let btn = document.getElementById('scanAllBtn');
             if (isScanning) {
                 btn.innerText = "⏸ Pause Live Scan";
                 btn.className = "btn-red";
-                runLiveRallyScan();
-                scanInterval = setInterval(runLiveRallyScan, 5000);
+                runLiveScan();
+                scanInterval = setInterval(runLiveScan, 6000);
             } else {
-                btn.innerText = "▶ Start Live Rally Scan";
+                btn.innerText = "▶ Start Institutional Live Scan";
                 btn.className = "btn-green";
                 clearInterval(scanInterval);
             }
         }
 
-        async function runLiveRallyScan() {
-            let stateBadge = document.getElementById('globalState');
-            if(stateBadge) stateBadge.innerText = "SCANNING LIVE VOLUME RALLIES...";
-            let container = document.getElementById('multiAssetBoard');
+        async function runLiveScan() {
+            let board = document.getElementById('multiAssetBoard');
             let html = '';
-
-            for (let symbol of assetList) {
-                let livePrice = await StrategyStrategies.fetchLivePrice(symbol);
-                let tfData = await StrategyStrategies.fetchMultiTFKlines(symbol);
-                
+            for (let sym of assetList) {
+                let price = await StrategyStrategies.fetchLivePrice(sym);
+                let tfData = await StrategyStrategies.fetchMultiTFData(sym);
                 if (tfData) {
-                    let rallyResult = StrategyStrategies.detectMassiveRallyAndDelta(tfData);
-                    let validation = VidyaEngineModule.validateInstitutionalConfluence(rallyResult);
+                    let htfBias = VidyaEngineModule.getHTFBias(tfData);
+                    let sweep = VidyaEngineModule.detectSessionSweep(tfData);
+                    let absorption = StrategyStrategies.calculateOrderflowDeltaAndAbsorption(tfData['1m']);
 
-                    if (rallyResult.triggered && validation.valid) {
-                        let isBuy = rallyResult.direction === 'BUY';
+                    if (sweep.swept && absorption.absorption) {
+                        let isBuy = sweep.direction === 'BUY';
+                        let tp = isBuy ? price * 1.025 : price * 0.975;
+                        let sl = isBuy ? sweep.swingLow * 0.998 : sweep.swingHigh * 1.002;
+                        let risk = Math.abs(price - sl);
+                        let reward = Math.abs(tp - price);
+                        let rr = risk > 0 ? (reward / risk).toFixed(1) : "5.0";
+
                         html += `
                             <div class="asset-card" style="border: 1px solid ${isBuy ? '#0ecb81' : '#f6465d'};">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <b>${symbol}</b>
-                                    <span class="${isBuy ? 'badge-buy' : 'badge-sell'}">${rallyResult.direction} (${rallyResult.rr})</span>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <b>${sym}</b>
+                                    <span class="${isBuy ? 'badge-buy' : 'badge-sell'}">${sweep.direction} (1:${rr})</span>
                                 </div>
-                                <div class="metric-row">Live Price: <span style="color:#f0b90b;">$${livePrice ? livePrice.toFixed(2) : rallyResult.entry.toFixed(2)}</span></div>
-                                <div class="metric-row">Entry Price: <span>$${rallyResult.entry.toFixed(2)}</span></div>
-                                <div class="metric-row">Target TP: <span style="color:#0ecb81;">$${rallyResult.tp.toFixed(2)}</span></div>
-                                <div class="metric-row">Stop Loss: <span style="color:#f6465d;">$${rallyResult.sl.toFixed(2)}</span></div>
-                                <div style="font-size:9px; color:#848e9c; margin-top:4px;">• Session: ${validation.session} | Vol Spike: ${rallyResult.volumeSpike}</div>
+                                <div class="metric-row">Bias: <span>${htfBias}</span></div>
+                                <div class="metric-row">Entry: <span>$${price.toFixed(2)}</span></div>
+                                <div class="metric-row">TP: <span style="color:#0ecb81;">$${tp.toFixed(2)}</span></div>
+                                <div class="metric-row">SL: <span style="color:#f6465d;">$${sl.toFixed(2)}</span></div>
+                                <div style="font-size:9px; color:#848e9c; margin-top:4px;">• Orderflow Absorption Detected</div>
                             </div>
                         `;
                         continue;
                     }
                 }
-
-                html += `<div class="asset-card"><b>${symbol}</b><br><span style="color:#848e9c; font-size:10px;">Scanning 1m volume delta rallies...</span></div>`;
+                html += `<div class="asset-card"><b>${sym}</b><br><span style="color:#848e9c; font-size:10px;">Scanning top-down delta...</span></div>`;
             }
-
-            container.innerHTML = html;
-            if(stateBadge) stateBadge.innerText = "MONITORING MARKET";
+            board.innerHTML = html;
         }
     </script>
 </body>
