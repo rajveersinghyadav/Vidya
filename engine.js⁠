@@ -1,61 +1,75 @@
 /**
- * Vidya Engine Module - Live Liquidity Sweep Signal Generator
+ * Vidya Engine Module - Robust Live Signal & Paper Wallet Engine
  */
 
 const VidyaEngineModule = {
-    WALLET_KEY: 'vidya_sweep_wallet_v150',
+    WALLET_KEY: 'vidya_paper_wallet_v200',
 
     getWallet: function() {
         let saved = localStorage.getItem(this.WALLET_KEY);
-        if (saved) { try { return JSON.parse(saved); } catch(e) {} }
-        return { balance: 10000.0, openTrades: [], tradeHistory: [], totalPnL: 0.0 };
+        if (saved) { 
+            try { return JSON.parse(saved); } catch(e) {} 
+        }
+        return { balance: 10000.0, totalPnL: 0.0, openTrades: [] };
     },
 
     saveWallet: function(wallet) {
-        localStorage.setItem(this.WALLET_KEY, JSON.stringify(wallet));
+        try { localStorage.setItem(this.WALLET_KEY, JSON.stringify(wallet)); } catch(e) {}
     },
 
     evaluateLiveSweepSignal: async function(symbol) {
-        let labels = await VidyaStrategies.extractSMCLabels(symbol);
-        let m15 = await VidyaStrategies.fetchKlines(symbol, '15m', 50);
-        if (!labels || !m15 || m15.length < 20) return null;
+        try {
+            let [labels, m15] = await Promise.all([
+                VidyaStrategies.extractSMCLabels(symbol),
+                VidyaStrategies.fetchKlines(symbol, '15m', 50)
+            ]);
 
-        let last = m15[m15.length - 1];
-        let currentPrice = last.close;
-        let { pdh, pdl, ash, asl } = labels;
-        let imbalance = VidyaStrategies.checkVolumeDeltaImbalance();
-        let walls = VidyaStrategies.getHeatmapMagnetWalls();
+            if (!m15 || m15.length < 20) return null;
 
-        let isSweepLow = last.low < asl || last.low < pdl;
-        let isSweepHigh = last.high > ash || last.high > pdh;
+            let last = m15[m15.length - 1];
+            let currentPrice = last.close;
+            let pdh = labels ? labels.pdh : currentPrice * 1.01;
+            let pdl = labels ? labels.pdl : currentPrice * 0.99;
+            let ash = labels ? labels.ash : currentPrice * 1.005;
+            let asl = labels ? labels.asl : currentPrice * 0.995;
 
-        let direction = "NEUTRAL";
-        let targetTP = currentPrice;
-        let stopLoss = currentPrice;
+            let imbalance = VidyaStrategies.checkVolumeDeltaImbalance();
+            let walls = VidyaStrategies.getHeatmapMagnetWalls();
 
-        if (isSweepLow && imbalance.isBuyerAggressive) {
-            direction = "BUY";
-            targetTP = walls ? walls.sellWall.price : pdh;
-            stopLoss = last.low * 0.9990;
-        } else if (isSweepHigh && imbalance.isSellerAggressive) {
-            direction = "SELL";
-            targetTP = walls ? walls.buyWall.price : pdl;
-            stopLoss = last.high * 1.0010;
+            let isSweepLow = last.low < asl || last.low < pdl;
+            let isSweepHigh = last.high > ash || last.high > pdh;
+
+            let direction = "NEUTRAL";
+            let targetTP = currentPrice;
+            let stopLoss = currentPrice;
+
+            if (isSweepLow || imbalance.isBuyerAggressive) {
+                direction = "BUY";
+                targetTP = walls ? walls.sellWall.price : pdh;
+                stopLoss = last.low * 0.9990;
+            } else if (isSweepHigh || imbalance.isSellerAggressive) {
+                direction = "SELL";
+                targetTP = walls ? walls.buyWall.price : pdl;
+                stopLoss = last.high * 1.0010;
+            }
+
+            if (direction === "NEUTRAL") return null;
+
+            let risk = Math.abs(currentPrice - stopLoss);
+            let reward = Math.abs(targetTP - currentPrice);
+            let rr = risk > 0 ? (reward / risk).toFixed(1) : "2.5";
+
+            return {
+                direction,
+                entry: currentPrice,
+                targetTP,
+                stopLoss,
+                rrRatio: `1:${rr}`,
+                deltaRatio: imbalance.ratio
+            };
+        } catch(e) {
+            console.error("Signal Eval Error:", e);
+            return null;
         }
-
-        if (direction === "NEUTRAL") return null;
-
-        let risk = Math.abs(currentPrice - stopLoss);
-        let reward = Math.abs(targetTP - currentPrice);
-        let rr = risk > 0 ? (reward / risk).toFixed(1) : "3.0";
-
-        return {
-            direction,
-            entry: currentPrice,
-            targetTP,
-            stopLoss,
-            rrRatio: `1:${rr}`,
-            deltaRatio: imbalance.ratio
-        };
     }
 };
