@@ -1,46 +1,56 @@
 /**
- * Vidya Institutional Engine Module
- * Swept vs Pending Liquidity Tracking & Magnet Target Mapping
+ * Vidya Live Signal Engine
+ * Uses the exact same 6-TF SMC + Sweep + Magnet Logic as Backtester.
  */
 
 const VidyaEngineModule = {
-    evaluateLiquiditySweepAndMagnet: function(tfData) {
+    evaluateLiveTradeSignal: function(tfData) {
         if (!tfData) return null;
 
-        let labels = VidyaStrategies.extractLiquidityLabels(tfData);
+        let labels = VidyaStrategies.extractSMCLabels(tfData);
         let m1 = tfData['1m'];
-        if (!labels || !m1 || m1.length === 0) return null;
+        let m15 = tfData['15m'];
+        let h1 = tfData['1h'];
 
-        let orderflow = VidyaStrategies.calculateOrderflowDelta(m1);
+        if (!labels || !m1 || !m15 || !h1) return null;
+
+        let orderflow = VidyaStrategies.checkOrderflowAbsorption(m1);
         let currentPrice = orderflow.currentPrice;
 
         let { pdh, pdl, ash, asl } = labels;
 
-        let sweptLow = currentPrice < asl || currentPrice < pdl;
-        let sweptHigh = currentPrice > ash || currentPrice > pdh;
+        // HTF Trend Check (1H Direction)
+        let h1Current = h1[h1.length - 1].close;
+        let h1Prev = h1[Math.max(0, h1.length - 6)].close;
+        let isH1Bullish = h1Current >= h1Prev;
 
-        // Determine Market Direction Bias and Magnet Target
+        // LTF Sweep Condition
+        let last15m = m15[m15.length - 1];
+        let isSweepLow = last15m.low < asl || last15m.low < pdl;
+        let isSweepHigh = last15m.high > ash || last15m.high > pdh;
+
         let direction = "NEUTRAL";
         let targetMagnet = currentPrice;
         let protectedSL = currentPrice;
-        let sweptLabelName = "";
-        let pendingMagnetName = "";
+        let sweptLabel = "";
+        let pendingMagnet = "";
 
-        if (sweptLow && orderflow.isSpike) {
-            // Low Liquidity Swept -> Smart Money Buyer Entry -> Target Top Liquidity
+        // CROSS-CONFLUENCE SIGNAL MATCHING
+        if (isSweepLow && orderflow.isSpike && isH1Bullish) {
             direction = "BUY";
-            sweptLabelName = currentPrice < pdl ? "PDL" : "ASL";
-            pendingMagnetName = currentPrice < pdl ? "PDH" : "ASH";
+            sweptLabel = currentPrice < pdl ? "PDL (Prev Day Low)" : "ASL (Asian Low)";
+            pendingMagnet = currentPrice < pdl ? "PDH (Prev Day High)" : "ASH (Asian High)";
             targetMagnet = currentPrice < pdl ? pdh : ash;
-            protectedSL = Math.min(asl, pdl) * 0.9985; // Safe Protected Stop Loss
-        } else if (sweptHigh && orderflow.isSpike) {
-            // High Liquidity Swept -> Smart Money Seller Entry -> Target Bottom Liquidity
+            protectedSL = last15m.low * 0.9990; // Protected below sweep wick
+        } else if (isSweepHigh && orderflow.isSpike && !isH1Bullish) {
             direction = "SELL";
-            sweptLabelName = currentPrice > pdh ? "PDH" : "ASH";
-            pendingMagnetName = currentPrice > pdh ? "PDL" : "ASL";
+            sweptLabel = currentPrice > pdh ? "PDH (Prev Day High)" : "ASH (Asian High)";
+            pendingMagnet = currentPrice > pdh ? "PDL (Prev Day Low)" : "ASL (Asian Low)";
             targetMagnet = currentPrice > pdh ? pdl : asl;
-            protectedSL = Math.max(ash, pdh) * 1.0015; // Safe Protected Stop Loss
+            protectedSL = last15m.high * 1.0010; // Protected above sweep wick
         }
+
+        if (direction === "NEUTRAL") return null;
 
         let risk = Math.abs(currentPrice - protectedSL);
         let reward = Math.abs(targetMagnet - currentPrice);
@@ -49,14 +59,13 @@ const VidyaEngineModule = {
         return {
             direction,
             currentPrice,
+            entry: currentPrice,
             targetMagnet,
             protectedSL,
             rrRatio: `1:${rrRatio}`,
-            sweptLabelName,
-            pendingMagnetName,
-            isAbsorption: orderflow.isAbsorption,
-            isSpike: orderflow.isSpike,
-            labels
+            sweptLabel,
+            pendingMagnet,
+            isAbsorption: orderflow.isAbsorption
         };
     }
 };
