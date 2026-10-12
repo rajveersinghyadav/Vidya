@@ -1,39 +1,28 @@
 /**
- * Vidya Engine Module - Multi-TF Label Extraction & Sweep Detection
+ * Vidya Engine Module - Institutional Session & Orderflow Validation
  */
 
 const VidyaEngineModule = {
-    detectLiquiditySweepAndDelta: function(tfData) {
-        if (!tfData || !tfData['15m'] || !tfData['1m']) return { swept: false };
-        let m15 = tfData['15m'];
-        let m1 = tfData['1m'];
-        let lastM15 = m15[m15.length - 1];
-        let prevM15 = m15.slice(m15.length - 15, m15.length - 1);
+    validateInstitutionalConfluence: function(rallyData) {
+        if (!rallyData.triggered) return { valid: false };
 
-        let swingHigh = Math.max(...prevM15.map(c => c.high));
-        let swingLow = Math.min(...prevM15.map(c => c.low));
+        let currentHour = new Date().getUTCHours();
+        let sessionName = "ASIAN RANGE";
+        let sessionMultiplier = 1.0;
 
-        let avgVol = m15.reduce((acc, c) => acc + c.volume, 0) / m15.length;
-        let isVolumeSpike = lastM15.volume >= (avgVol * 0.80);
-
-        let bullishSweep = (lastM15.low < swingLow && lastM15.close > swingLow) && isVolumeSpike;
-        let bearishSweep = (lastM15.high > swingHigh && lastM15.close < swingHigh) && isVolumeSpike;
-
-        let m1Last = m1[m1.length - 1];
+        // London Killzone & New York Killzone high-probability filters
+        if (currentHour >= 7 && currentHour <= 10) {
+            sessionName = "LONDON KILLZONE";
+            sessionMultiplier = 1.2;
+        } else if (currentHour >= 13 && currentHour <= 16) {
+            sessionName = "NEW YORK KILLZONE";
+            sessionMultiplier = 1.5;
+        }
 
         return {
-            swept: bullishSweep || bearishSweep,
-            direction: bullishSweep ? 'BUY' : bearishSweep ? 'SELL' : 'NEUTRAL',
-            swingHigh,
-            swingLow,
-            pinpointEntry: m1Last.close
+            valid: true,
+            session: sessionName,
+            confluenceScore: (parseFloat(rallyData.rr.split(':')[1]) * sessionMultiplier).toFixed(1)
         };
-    },
-
-    getSessionInfo: function() {
-        let currentHour = new Date().getUTCHours();
-        if (currentHour >= 7 && currentHour <= 10) return "LONDON KILLZONE";
-        if (currentHour >= 13 && currentHour <= 16) return "NEW YORK KILLZONE";
-        return "ASIAN RANGE";
     }
 };
