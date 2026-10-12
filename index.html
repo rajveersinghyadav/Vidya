@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidya - 6-TF SMC Live Signal & Backtest Terminal</title>
+    <title>Vidya - Institutional SMC & Paper Wallet Terminal</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0e11; color: #d1d4dc; margin: 0; padding: 12px; }
         h1 { font-size: 18px; color: #f0b90b; margin-bottom: 2px; }
         .subtitle { font-size: 11px; color: #848e9c; margin-bottom: 12px; }
         .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
         .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-bottom: 12px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .asset-card { background: #1e2329; border: 1px solid #2b313a; border-radius: 6px; padding: 10px; }
         .controls { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-        button { background-color: #1e2329; color: #fff; border: 1px solid #2b313a; padding: 14px; border-radius: 6px; font-size: 13px; outline: none; cursor: pointer; flex: 1; font-weight: bold; }
+        button { background-color: #1e2329; color: #fff; border: 1px solid #2b313a; padding: 12px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer; flex: 1; font-weight: bold; }
         .btn-green { background-color: #0ecb81; color: #000; }
         .btn-blue { background-color: #2b6cb0; color: #fff; }
         .btn-red { background-color: #f6465d; color: #fff; }
-        .metric-row { display: flex; justify-content: space-between; font-size: 11px; padding: 5px 0; border-bottom: 1px solid #21262d; }
+        .metric-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid #21262d; }
         .metric-row span { color: #fff; font-weight: bold; }
         .badge-buy { background: rgba(14,203,129,0.2); color: #0ecb81; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
         .badge-sell { background: rgba(246,70,93,0.2); color: #f6465d; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
@@ -24,35 +25,40 @@
 </head>
 <body>
 
-    <h1>Vidya - 6-TF SMC Live Signal & Backtest Terminal</h1>
-    <div class="subtitle">Pure Binance Market Data • Liquidity Sweeps • Magnet Zone Target • Protected TP/SL</div>
+    <h1>Vidya - Institutional SMC & Paper Wallet Terminal</h1>
+    <div class="subtitle">Live WebSockets • Delta Imbalance • Target Magnets • Live Wallet Balance</div>
 
     <div class="controls">
-        <button id="scanAllBtn" class="btn-green" onclick="toggleLiveScanner()">▶ Start Live SMC Signal Engine</button>
-        <button id="backtestBtn" class="btn-blue" onclick="toggleBacktestLoop()">▶ Start Background 6-TF Backtest</button>
+        <button id="scanAllBtn" class="btn-green" onclick="toggleLiveScanner()">▶ Start Live SMC Engine</button>
+        <button id="backtestBtn" class="btn-blue" onclick="toggleBacktestLoop()">▶ Start Background Backtest</button>
+    </div>
+
+    <!-- WALLET & BACKTEST METRICS BOARD -->
+    <div class="grid-2" style="margin-bottom: 12px;">
+        <div class="card" style="border-color: #f0b90b;">
+            <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px;">💼 PAPER TRADING WALLET MANAGEMENT</div>
+            <div class="metric-row">Account Balance: <span id="wBalance" style="color:#0ecb81;">$10,000.00</span></div>
+            <div class="metric-row">Total PnL: <span id="wPnL">$0.00</span></div>
+            <div class="metric-row">Open Active Positions: <span id="wOpenPositions">0</span></div>
+        </div>
+
+        <div class="card">
+            <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px;">🧠 REAL HISTORICAL BACKTEST ACCURACY</div>
+            <div class="metric-row">Total Historical Scans: <span id="btTotalScans">0</span></div>
+            <div class="metric-row">Calculated Win Rate: <span id="btWinRate" style="color:#0ecb81;">0.0%</span></div>
+            <div class="metric-row">Rally Wins / Losses: <span id="btRatio">0 / 0</span></div>
+        </div>
     </div>
 
     <!-- LIVE SMC SIGNAL BOARD -->
     <div class="card" style="border-color: #0ecb81;">
-        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 8px; display: flex; justify-content: space-between;">
-            <span>⚡ REAL-TIME SMC SIGNAL BOARD (ENTRY, PROTECTED SL, MAGNET TP)</span>
-            <span id="globalState" style="color: #0ecb81;">READY</span>
-        </div>
+        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 8px;">⚡ LIVE SIGNAL & MAGNET BOARD</div>
         <div class="grid-4" id="multiAssetBoard">
             <div class="asset-card"><b>BTC/USDT</b><br><span style="color:#848e9c; font-size:10px;">Click Start Live Engine...</span></div>
             <div class="asset-card"><b>ETH/USDT</b><br><span style="color:#848e9c; font-size:10px;">Click Start Live Engine...</span></div>
             <div class="asset-card"><b>SOL/USDT</b><br><span style="color:#848e9c; font-size:10px;">Click Start Live Engine...</span></div>
             <div class="asset-card"><b>XAU/USD (Gold)</b><br><span style="color:#848e9c; font-size:10px;">Click Start Live Engine...</span></div>
         </div>
-    </div>
-
-    <!-- ACCURACY DISPLAY -->
-    <div class="card">
-        <div style="font-size: 12px; font-weight: bold; color: #f0b90b; margin-bottom: 6px;">🧠 REAL 6-TIMEFRAME SMC HISTORICAL ACCURACY</div>
-        <div class="metric-row">Total Confluence Iterations: <span id="btTotalScans">0</span></div>
-        <div class="metric-row">Calculated Real Accuracy: <span id="btWinRate" style="color:#0ecb81;">0.0%</span></div>
-        <div class="metric-row">Historical Rally Wins: <span id="btWins" style="color:#0ecb81;">0</span></div>
-        <div class="metric-row">Historical Rally Losses: <span id="btLosses" style="color:#f6465d;">0</span></div>
     </div>
 
     <script src="strategies.js"></script>
@@ -68,12 +74,20 @@
         window.onload = function() { updateUI(); };
 
         function updateUI() {
-            if (typeof VidyaBacktesterModule === 'undefined') return;
-            let state = VidyaBacktesterModule.getState();
-            document.getElementById('btTotalScans').innerText = state.totalScans || 0;
-            document.getElementById('btWinRate').innerText = (state.winRate || 0).toFixed(1) + "%";
-            document.getElementById('btWins').innerText = state.wins || 0;
-            document.getElementById('btLosses').innerText = state.losses || 0;
+            if (typeof VidyaBacktesterModule !== 'undefined') {
+                let state = VidyaBacktesterModule.getState();
+                document.getElementById('btTotalScans').innerText = state.totalScans || 0;
+                document.getElementById('btWinRate').innerText = (state.winRate || 0).toFixed(1) + "%";
+                document.getElementById('btRatio').innerText = `${state.wins || 0} / ${state.losses || 0}`;
+            }
+
+            if (typeof VidyaEngineModule !== 'undefined') {
+                let wallet = VidyaEngineModule.getWalletState();
+                document.getElementById('wBalance').innerText = "$" + wallet.balance.toFixed(2);
+                document.getElementById('wPnL').innerText = "$" + wallet.totalPnL.toFixed(2);
+                document.getElementById('wPnL').style.color = wallet.totalPnL >= 0 ? '#0ecb81' : '#f6465d';
+                document.getElementById('wOpenPositions').innerText = wallet.openTrades.length;
+            }
         }
 
         function toggleBacktestLoop() {
@@ -84,12 +98,12 @@
                 btn.className = "btn-red";
                 btInterval = setInterval(async () => {
                     for (let sym of assetList) {
-                        await VidyaBacktesterModule.runHistoricalCombinationBacktest(sym);
+                        await VidyaBacktesterModule.runHistoricalBacktest(sym);
                         updateUI();
                     }
                 }, 2500);
             } else {
-                btn.innerText = "▶ Start Background 6-TF Backtest";
+                btn.innerText = "▶ Start Background Backtest";
                 btn.className = "btn-blue";
                 clearInterval(btInterval);
             }
@@ -104,7 +118,7 @@
                 runLiveScan();
                 scanInterval = setInterval(runLiveScan, 5000);
             } else {
-                btn.innerText = "▶ Start Live SMC Signal Engine";
+                btn.innerText = "▶ Start Live SMC Engine";
                 btn.className = "btn-green";
                 clearInterval(scanInterval);
             }
@@ -117,33 +131,29 @@
             for (let sym of assetList) {
                 let tfData = await VidyaStrategies.fetch6TFData(sym);
                 if (tfData) {
-                    let signal = VidyaEngineModule.evaluateLiveTradeSignal(tfData);
+                    let signal = VidyaEngineModule.evaluateSMCSignal(tfData);
 
                     if (signal) {
                         let isBuy = signal.direction === 'BUY';
+                        VidyaEngineModule.processWalletTrade(sym, signal);
+                        updateUI();
+
                         html += `
                             <div class="asset-card" style="border: 1px solid ${isBuy ? '#0ecb81' : '#f6465d'}; background: #182026;">
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
                                     <b>${sym}</b>
-                                    <span class="${isBuy ? 'badge-buy' : 'badge-sell'}">LIVE ${signal.direction} (${signal.rrRatio})</span>
+                                    <span class="${isBuy ? 'badge-buy' : 'badge-sell'}">${signal.direction} (${signal.rrRatio})</span>
                                 </div>
-                                <div class="metric-row">Locked Entry: <span>$${signal.entry.toFixed(2)}</span></div>
-                                <div class="metric-row">Target Magnet TP (${signal.pendingMagnet}): <span style="color:#0ecb81;">$${signal.targetMagnet.toFixed(2)}</span></div>
+                                <div class="metric-row">Entry Price: <span>$${signal.entry.toFixed(2)}</span></div>
+                                <div class="metric-row">Target Magnet TP: <span style="color:#0ecb81;">$${signal.targetMagnet.toFixed(2)}</span></div>
                                 <div class="metric-row">Protected SL: <span style="color:#f6465d;">$${signal.protectedSL.toFixed(2)}</span></div>
-                                <div style="font-size:9px; color:#848e9c; margin-top:4px;">
-                                    • Swept: ${signal.sweptLabel} | Vol Spike & Absorption Verified
-                                </div>
+                                <div class="metric-row">Delta Imbalance: <span>${signal.deltaRatio}x</span></div>
                             </div>
                         `;
                         continue;
                     }
                 }
-                html += `
-                    <div class="asset-card">
-                        <b>${sym}</b><br>
-                        <span style="color:#848e9c; font-size:10px;">Scanning 6-TF SMC Sweeps & Magnet Targets...</span>
-                    </div>
-                `;
+                html += `<div class="asset-card"><b>${sym}</b><br><span style="color:#848e9c; font-size:10px;">Scanning sweeps & wallet orders...</span></div>`;
             }
             container.innerHTML = html;
         }
